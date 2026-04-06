@@ -1,0 +1,5 @@
+# -------------------------
+# Output / generated tiles
+# -------------------------
+*.mbtiles
+*.pmtiles
