@@ -5,6 +5,7 @@ FROM ubuntu:24.04
 # TODO: Optional: Fix package versions for reproducibility: e.g., python3=3.12.2-1ubuntu1, tippecanoe=2.40.1-1
 RUN apt-get update && apt-get install -y \
         python3 \
+        python3-pip \
         tippecanoe \
         curl \
         tar \
@@ -14,11 +15,14 @@ RUN apt-get update && apt-get install -y \
     && chmod +x /usr/local/bin/pmtiles \
     && rm -rf /tmp/pmtiles.tar.gz
 
+# Install Python dependencies from requirements.txt
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
 WORKDIR /app
 COPY . .
 
-# TODO: Optional: Python dependencies
-# TODO: Optional: .dockerignore
+# TODO: Optional: .dockerignore - see comment/issue in file
 
 CMD ["python3", "scripts/script.py"]
 
