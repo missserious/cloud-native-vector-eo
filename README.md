@@ -1,24 +1,34 @@
 # [Cloud-Native Architecture for Vector EO Products](#)
 
-## processing container
+## Context
 
-sudo docker build -t processing-mvp .
-sudo docker run --rm -v $(pwd)/output:/app/output -u $(id -u):$(id -g) processing-mvp
+There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
-## storage container
+## Architecture Overview
 
-- Map container port 9000 (S3 API) to host port 9000
-- Map container port 9001 (WebUI) to host port 9001
+This solution is implemented using **three Docker containers**:
 
-docker build -t minio-storage-mvp .
-docker run -d \
- --name minio \
- -p 9000:9000 \
--p 9001:9001 \
--v $(pwd)/minio_data:/data \
- minio-storage-mvp
+1. **Processing Container**  
+   Handles transformation of vector data.
 
-TODO: Docker-in-Docker Watcher
-B) Docker-in-Docker Watcher (leichtgewichtig)
-Ein separates Python-Script oder Shell-Watcher läuft nur auf Host, um docker run zu triggern
-Vorteil: Container enthält alles → Host muss nur Docker haben, sonst nichts
+2. **Storage Container**  
+   Stores processed vector data using **MinIO**. Provides the data for the **frontend**.
+
+3. **Frontend Container**  
+   Provides a user interface to visualize and interact with the vector data stored in the Storage container.
+
+## Local Development
+
+## TODO'S
+
+- [ ] Docker Diagram ( e. g. Mermaid/PNG )
+
+- Processing Container
+  - [x] A
+  - [ ] B
+- Storage Container
+  - [x] A
+  - [ ] B
+- Frontend Container
+  - [x] A
+  - [ ] B
