@@ -1,6 +1,9 @@
 import subprocess
 import os
 
+import boto3
+from botocore.client import Config
+
 ############################################
 ## Step 3: Generate vector tiles: mbtiles ##
 ## Step 4: Convert to PMTiles: pmtiles    ##
@@ -49,5 +52,28 @@ subprocess.run([
 ], check=True)
 print(f"PMTiles created: {pmtiles_path}")
 
+#################################################################
+## Step 5: TODO:  Upload PMTiles to MinIO (persistent storage) ##
+#################################################################
 
-# TODO: Ensure files are written to persistent storage
+# Documentation: https://www.stackhero.io/en-US/services/MinIO/documentations/Getting-started
+# TODO: .env for security 
+ENDPOINT = "http://minio:9000"
+ACCESS_KEY = "minioadmin"
+SECRET_KEY = "minioadmin"
+USE_SSL = False  # True, if HTTPS
+
+s3 = boto3.client(
+    's3',
+    endpoint_url=ENDPOINT,  # Nutze die Variable
+    aws_access_key_id=ACCESS_KEY,
+    aws_secret_access_key=SECRET_KEY,
+    config=Config(signature_version='s3v4'),
+    region_name='eu-central-1',
+    use_ssl=USE_SSL
+)
+
+# bucket_name = 'pmtiles-bucket'
+# --- list buckets ---
+response = s3.list_buckets()
+print(response)

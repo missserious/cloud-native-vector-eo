@@ -17,7 +17,47 @@ This solution is implemented using **three Docker containers**:
 3. **Frontend Container**  
    Provides a user interface to visualize and interact with the vector data stored in the Storage container.
 
-## Local Development
+## Local Development / Setup Steps
+
+To get the architecture running locally, follow these **five main steps**:
+
+**Step 1: Create Docker Network**  
+ This allows containers to communicate with each other.
+
+```bash
+sudo docker network create app-network
+```
+
+**Step 2: Build Processing Image**
+
+```bash
+sudo docker build -t processing-mvp .
+```
+
+**Step 3: Build Storage Image**
+
+```bash
+sudo docker build -t minio-storage-mvp .
+```
+
+**Step 4: Run Storage Container**
+
+```bash
+sudo docker run -d --name minio \
+ --network app-network \
+ -p 9000:9000 -p 9001:9001 \
+ -v $(pwd)/minio_data:/data \
+ minio-storage-mvp
+```
+
+**Step 5: Run Processing Container**
+
+```bash
+sudo docker run --rm \
+    --network app-network \
+    -v $(pwd)/output:/app/output \
+    processing-mvp
+```
 
 ## TODO'S
 
