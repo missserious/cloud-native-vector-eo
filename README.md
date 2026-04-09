@@ -61,14 +61,49 @@ sudo docker run --rm \
 
 ## TODO'S
 
-- [ ] Docker Diagram ( e. g. Mermaid/PNG )
-
 - Processing Container
-  - [x] A
-  - [ ] B
-- Storage Container
-  - [x] A
-  - [ ] B
+  - [x] Generate MBTiles from GeoJSON (Tippecanoe)
+  - [x] Convert MBTiles → PMTiles
+  - [ ] GeoJSON → GeoParquet converstion (analytics dataset)
+  - [x] Configure access to MinIO (endpoint, keys)
+  - [x] Create bucket for PMTiles in MinIO
+  - [x] Upload PMTiles to MinIO
+  - [ ] Upload PMTiles to MinIO (boto3)
+  - [ ] Basic logging / error handling
+  - [ ] Tests: pytest
+- Storage Container (MinIO)
+  - [x] Setup MinIO container
+
 - Frontend Container
-  - [x] A
-  - [ ] B
+  - [ ] Setup
+    - [ ] Vite (Build Tool)
+    - [ ] React
+    - [ ] TypeScript
+
+  - [ ] Mapping / Visualization
+    - [ ] React Map GL
+    - [ ] MapLibre GL JS
+    - [ ] Display STAC Item Example with Classification + Render
+
+  - [ ] Styling
+    - [ ] Tailwind CSS
+
+  - [ ] Code Quality
+    - [ ] ESLint
+    - [ ] Prettier
+    - [ ] Pre-commit hooks (husky & lint-staged)
+
+### Optional / Architecture Features & Future Improvements
+
+- [ ] Docker Diagram (e.g. Mermaid/PNG)
+- [x] Docker Network  
+       Enables communication between containers.  
+       Without it, localhost in one container points only to itself, so containers cannot reach each other.  
+       By putting them in the same network, containers can communicate via their container names.
+
+- [ ] Docker Compose orchestration (Processing + Storage + Frontend)
+- [ ] Hot-reload / watch mode for Processing container
+- [ ] Development environment configurations (env files, debug setup)
+- [ ] Linting / Prettier integration for Processing container
+- [ ] Basic testing (pipeline & storage)
+- [ ] Documentation (setup + workflow)
