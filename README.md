@@ -54,9 +54,10 @@ sudo docker run -d --name minio \
 
 ```bash
 sudo docker run --rm \
-    --network app-network \
-    -v $(pwd)/output:/app/output \
-    processing-mvp
+ --network app-network \
+ -v $(pwd):/app \
+ processing-mvp
+
 ```
 
 ## TODO'S
