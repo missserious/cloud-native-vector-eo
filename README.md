@@ -60,18 +60,26 @@ sudo docker run --rm \
 
 ```
 
+## Test Local Setup
+
+Access MinIO Interface via Browser:
+`http://localhost:9001`
+enter credentials
+
 ## TODO'S
 
-- Processing Container
+- Processing Container (2 separate processing steps and 1 upload step)
   - [x] Generate MBTiles from GeoJSON (Tippecanoe)
   - [x] Convert MBTiles → PMTiles
   - [ ] GeoJSON → GeoParquet converstion (analytics dataset)
   - [x] Configure access to MinIO (endpoint, keys)
   - [x] Create bucket for PMTiles in MinIO
-  - [x] Upload PMTiles to MinIO
   - [ ] Upload PMTiles to MinIO (boto3)
+  - [ ] PROD: versioned upload
   - [ ] Basic logging / error handling
-  - [ ] Tests: pytest
+  - [ ] Tests: pytest (connection2minIO)
+  - [ ] Hot Reload (Issue: watchdog)
+
 - Storage Container (MinIO)
   - [x] Setup MinIO container
 
@@ -103,7 +111,6 @@ sudo docker run --rm \
        By putting them in the same network, containers can communicate via their container names.
 
 - [ ] Docker Compose orchestration (Processing + Storage + Frontend)
-- [ ] Hot-reload / watch mode for Processing container
 - [ ] Development environment configurations (env files, debug setup)
 - [ ] Linting / Prettier integration for Processing container
 - [ ] Basic testing (pipeline & storage)

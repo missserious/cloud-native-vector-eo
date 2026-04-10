@@ -25,7 +25,9 @@ COPY . .
 
 # TODO: Optional: .dockerignore - see comment/issue in file
 
-CMD ["python3", "scripts/script.py"]
+# PROD-SERVER
+CMD ["python3", "app/main.py"]
+# TODO: DEV-SERVER
 
 # TODO: Optional multi-stage build for clean/minimal image
 # - Stage 1: Build PMTiles CLI + any other temporary tools (e.g., curl, tar)
