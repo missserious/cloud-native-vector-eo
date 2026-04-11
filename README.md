@@ -57,28 +57,35 @@ sudo docker run --rm \
  --network app-network \
  -v $(pwd):/app \
  processing-mvp
-
 ```
 
 ## Test Local Setup
 
+### Test minIO
+
 Access MinIO Interface via Browser:
 `http://localhost:9001`
 enter credentials
+
+### Run Pytests
+
+```bash
+sudo docker run --rm processing-mvp pytest
+```
 
 ## TODO'S
 
 - Processing Container (2 separate processing steps and 1 upload step)
   - [x] Generate MBTiles from GeoJSON (Tippecanoe)
   - [x] Convert MBTiles → PMTiles
-  - [ ] GeoJSON → GeoParquet converstion (analytics dataset)
+  - [ ] GeoJSON → GeoParquet (analytics dataset)
   - [x] Configure access to MinIO (endpoint, keys)
   - [x] Create bucket for PMTiles in MinIO
-  - [ ] Upload PMTiles to MinIO (boto3)
-  - [ ] PROD: versioned upload
-  - [ ] Basic logging / error handling
+  - [x] Upload PMTiles to MinIO (boto3)
   - [ ] Tests: pytest (connection2minIO)
+  - [ ] Basic logging / error handling
   - [ ] Hot Reload (Issue: watchdog)
+  - [ ] PROD: versioned upload
 
 - Storage Container (MinIO)
   - [x] Setup MinIO container
