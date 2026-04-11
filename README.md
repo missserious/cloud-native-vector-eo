@@ -78,7 +78,9 @@ sudo docker run --rm processing-mvp pytest
 - Processing Container (2 separate processing steps and 1 upload step)
   - [x] Generate MBTiles from GeoJSON (Tippecanoe)
   - [x] Convert MBTiles → PMTiles
-  - [ ] GeoJSON → GeoParquet (analytics dataset)
+  - [ ] Convert GeoJSON → GeoParquet (analytics dataset):
+    - [ ] Solution A: GeoParquet (geopandas, (+ pandas, + pyarrow, +shapely))
+    - [ ] Solution B: GDAL / ogr2ogr
   - [x] Configure access to MinIO (endpoint, keys)
   - [x] Create bucket for PMTiles in MinIO
   - [x] Upload PMTiles to MinIO (boto3)

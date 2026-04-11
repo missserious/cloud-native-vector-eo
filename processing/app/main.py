@@ -1,8 +1,10 @@
 import subprocess
 import os
-
+# minIO 
 import boto3
 from botocore.client import Config
+# conversion
+import geopandas as gpd
 
 ############################################
 ## Step 3: Generate vector tiles: mbtiles ##
@@ -13,11 +15,34 @@ from botocore.client import Config
 
 
 def main():
+    #####################
+    ## Step 1: geojson ##
+    #####################
     # Paths
     geojson_path = "data/ndvi-change-vector-result-example.json"
+
+    # 
     mbtiles_path = "output/tiles.mbtiles"
     pmtiles_path = "output/tiles.pmtiles"
+    geoparquet_path = "output/parquet.parquet"
 
+    # load geojson
+    gdf = gpd.read_file(geojson_path)
+    # check CRS sicherstellen
+    if gdf.crs is None:
+        gdf = gdf.set_crs("EPSG:4326")
+
+    # repair geometry if necessary
+    gdf["geometry"] = gdf["geometry"].buffer(0)
+
+    ###################################
+    ## Step 2: Convert to GeoParquet ##
+    ###################################
+    # save GeoParquet 
+    # TODO: check if converstion is successfull
+    gdf.to_parquet(geoparquet_path, engine="pyarrow", index=False)    
+    # end: geoparquet
+    
     # Ensure output folder exists
     os.makedirs(os.path.dirname(mbtiles_path), exist_ok=True)
 
