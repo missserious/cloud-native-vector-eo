@@ -5,3 +5,9 @@ pytest==9.0.3
 # conversion
 geopandas==1.1.3
 pyarrow==17.0.0
+
+pandas==2.2.2
+numpy==1.26.4
+
+shapely==2.0.4
+pyproj==3.6.1
