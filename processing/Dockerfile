@@ -1,4 +1,4 @@
-# Base image
+# GDAL Base image
 FROM ghcr.io/osgeo/gdal:ubuntu-full-3.10.1
 
 # Install system tools and pmtiles CLI
@@ -13,14 +13,16 @@ RUN apt-get update && apt-get install -y \
         https://github.com/protomaps/go-pmtiles/releases/download/v1.30.1/go-pmtiles_1.30.1_Linux_x86_64.tar.gz \
     && tar -xzf /tmp/pmtiles.tar.gz -C /usr/local/bin pmtiles \
     && chmod +x /usr/local/bin/pmtiles \
-    && rm -rf /tmp/pmtiles.tar.gz
-
-# Install Python dependencies from requirements.txt
-COPY requirements.txt .
-RUN pip3 install --no-cache-dir --break-system-packages --ignore-installed -r requirements.txt
+    && rm -rf /tmp/pmtiles.tar.gz \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY . .
+
+# Install python dependencies from requirements.txt
+COPY requirements.txt /app/
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
+
+COPY . /app/
 
 # TODO: Optional: .dockerignore - see comment/issue in file
 
@@ -28,7 +30,7 @@ COPY . .
 CMD ["python3", "app/main.py"]
 # TODO: DEV-SERVER
 
-# TODO: Optional multi-stage build for clean/minimal image
+# TODO: Optional: multi-stage build for clean/minimal image
 # - Stage 1: Build PMTiles CLI + any other temporary tools (e.g., curl, tar)
 # - Stage 2: Runtime stage with only Python3, Tippecanoe, PMTiles CLI + scripts
 # - Alternative for single-stage MVP: purge temporary tools (curl, tar) after installation
