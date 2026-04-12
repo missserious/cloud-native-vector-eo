@@ -1,8 +1,9 @@
-# -------------------------
-# Output / generated tiles
-# -------------------------
+# ---------------------------------
+# Output / generated tiles/parquet
+# ---------------------------------
 *.mbtiles
 *.pmtiles
+*.parquet
 
 # ---------------------------------------
 # Storage / ignore MinIO persistent data
