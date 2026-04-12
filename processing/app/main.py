@@ -19,12 +19,12 @@ def main():
     ## Step 1: geojson ##
     #####################
     # Paths
-    geojson_path = "data/ndvi-change-vector-result-example.json"
+    geojson_path = "data/input/ndvi-change-vector-result-example.json"
 
     # 
-    mbtiles_path = "output/tiles.mbtiles"
-    pmtiles_path = "output/tiles.pmtiles"
-    geoparquet_path = "output/parquet.parquet"
+    mbtiles_path = "data/output/tiles.mbtiles"
+    pmtiles_path = "data/output/tiles.pmtiles"
+    geoparquet_path = "data/output/parquet.parquet"
 
     # load geojson
     gdf = gpd.read_file(geojson_path)
@@ -35,12 +35,37 @@ def main():
     # repair geometry if necessary
     gdf["geometry"] = gdf["geometry"].buffer(0)
 
-    ###################################
-    ## Step 2: Convert to GeoParquet ##
-    ###################################
+    ####################################
+    ## Step 2A: Convert to GeoParquet ##
+    ####################################
     # save GeoParquet 
     # TODO: check if converstion is successfull
     gdf.to_parquet(geoparquet_path, engine="pyarrow", index=False)    
+    # end: geoparquet
+
+    ####################################
+    ## Step 2B: Convert to GeoParquet ##
+    ####################################
+    # save GeoParquet 
+    output_file = "data/output/output_gdal.parquet"
+
+    cmd = [
+        "ogr2ogr",
+        "-f", "Parquet",
+        output_file,
+        geojson_path,
+        "-lco", "GEOMETRY_NAME=geometry",
+        "-lco", "FID=id",
+        "-lco", "COMPRESSION=SNAPPY"
+    ]
+
+    result = subprocess.run(cmd, capture_output=True, text=True)
+
+    print("STDOUT:\n", result.stdout)
+    print("STDERR:\n", result.stderr)
+
+    result.check_returncode()
+
     # end: geoparquet
     
     # Ensure output folder exists

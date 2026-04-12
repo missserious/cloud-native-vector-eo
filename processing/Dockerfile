@@ -1,5 +1,5 @@
 # Base image
-FROM ubuntu:24.04
+FROM ghcr.io/osgeo/gdal:ubuntu-full-3.10.1
 
 # Install system tools and pmtiles CLI
 # TODO: Optional: Fix package versions for reproducibility: e.g., python3=3.12.2-1ubuntu1, tippecanoe=2.40.1-1
@@ -17,8 +17,7 @@ RUN apt-get update && apt-get install -y \
 
 # Install Python dependencies from requirements.txt
 COPY requirements.txt .
-RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
-# RUN python3 -m pip install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages --ignore-installed -r requirements.txt
 
 WORKDIR /app
 COPY . .
