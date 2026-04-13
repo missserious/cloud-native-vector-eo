@@ -1,156 +1,44 @@
-import subprocess
-import os
-# minIO 
-import boto3
-from botocore.client import Config
-# conversion
-import geopandas as gpd
+from conversion_pipeline import ConversionPipeline
+from minio_storage import MinioStorage
 
-############################################
-## Step 3: Generate vector tiles: mbtiles ##
-## Step 4: Convert to PMTiles: pmtiles    ##
-############################################
+from dotenv import load_dotenv
+load_dotenv() 
 
-## TODO: simple setup: formatter and linter
+# TODO: Type Checker (mypy / pyright), Prettier (Code Formatter), Linter (ruff / flake8)
+# TODO: Typisieren 
+# TODO: logging.error instead of print - import logging - logging.info
+# TODO: ENV validation,
+def main() -> None:
+    # Entry Point 
+    #
+    # Flow:
+    # Storage Init → Bucket Setup → Pipeline Execution → Output Validation → Conditional Upload
+    #
+    # Rules:
+    # - No upload if any pipeline step fails
+    # - No upload if any expected output file is missing
+    # - Fail fast on exceptions 
 
+    storage: MinioStorage = MinioStorage()
+    storage.create_bucket()
 
-def main():
-    #####################
-    ## Step 1: geojson ##
-    #####################
-    # Paths
-    geojson_path = "data/input/ndvi-change-vector-result-example.json"
+    input_file_path: str = "data/input/ndvi-change-vector-result-example.json"
+    # input_file_path: str = "data/input/ndvi-change-vector-result-example_invalid.json"
+    # input_file_path: str = "data/input/ndvi-change-vector-result-example_empty.txt"
+    pipeline: ConversionPipeline = ConversionPipeline("data/output/")
+    # Run pipeline (returns result=output file paths)
+    # TODO: TypeDict
+    result: dict[str, str] = pipeline.run(input_file_path)
 
-    # 
-    mbtiles_path = "data/output/tiles.mbtiles"
-    pmtiles_path = "data/output/tiles.pmtiles"
-    geoparquet_path = "data/output/parquet.parquet"
-
-    # load geojson
-    gdf = gpd.read_file(geojson_path)
-    # check CRS sicherstellen
-    if gdf.crs is None:
-        gdf = gdf.set_crs("EPSG:4326")
-
-    # repair geometry if necessary
-    gdf["geometry"] = gdf["geometry"].buffer(0)
-
-    ####################################
-    ## Step 2A: Convert to GeoParquet ##
-    ####################################
-    # save GeoParquet 
-    # TODO: check if converstion is successfull
-    gdf.to_parquet(geoparquet_path, engine="pyarrow", index=False)    
-    # end: geoparquet
-
-    ####################################
-    ## Step 2B: Convert to GeoParquet ##
-    ####################################
-    # save GeoParquet 
-    output_file = "data/output/output_gdal.parquet"
-
-    cmd = [
-        "ogr2ogr",
-        "-f", "Parquet",
-        output_file,
-        geojson_path,
-        "-lco", "GEOMETRY_NAME=geometry",
-        "-lco", "FID=id",
-        "-lco", "COMPRESSION=SNAPPY"
-    ]
-
-    result = subprocess.run(cmd, capture_output=True, text=True)
-
-    print("STDOUT:\n", result.stdout)
-    print("STDERR:\n", result.stderr)
-
-    result.check_returncode()
-
-    # end: geoparquet
-    
-    # Ensure output folder exists
-    os.makedirs(os.path.dirname(mbtiles_path), exist_ok=True)
-
-    # Delete old MBTiles if they exist
-    if os.path.exists(mbtiles_path):
-        print(f"{mbtiles_path} already exists → will be recreated")
-        os.remove(mbtiles_path)
-
-    # TODO: Externalize Tippecanoe configuration (e.g., min/max zoom, flags)
-    # via environment variables or config file to make the processing pipeline
-    # more flexible and reusable in different environments (dev, batch, cloud)
-    print(f"Starting tile generation: {geojson_path}")
-    subprocess.run([
-        "tippecanoe",
-        "-o", mbtiles_path,
-        "-Z", "0", "-z", "14",
-        "--drop-densest-as-needed",
-        "--extend-zooms-if-still-dropping",
-        geojson_path
-    ], check=True)
-    print(f"MBTiles created: {mbtiles_path}")
-
-    # Delete old PMTiles if they exist
-    if os.path.exists(pmtiles_path):
-        print(f"{pmtiles_path} already exists → will be recreated")
-        os.remove(pmtiles_path)
-
-    # Convert MBTiles → PMTiles
-    print(f"Converting MBTiles → PMTiles: {pmtiles_path}")
-    subprocess.run([
-        "pmtiles", "convert",
-        mbtiles_path,
-        pmtiles_path
-    ], check=True)
-    print(f"PMTiles created: {pmtiles_path}")
-
-    #################################################################
-    ## Step 5: TODO:  Upload PMTiles to MinIO (persistent storage) ##
-    ## class MinioClient:                                          ##
-    #################################################################
-
-    # Documentation: https://www.stackhero.io/en-US/services/MinIO/documentations/Getting-started
-    # TODO: .env for security 
-    ENDPOINT = "http://minio:9000"
-    ACCESS_KEY = "minioadmin"
-    SECRET_KEY = "minioadmin"
-    USE_SSL = False  # True, if HTTPS
-
-    s3 = boto3.client(
-        's3',
-        endpoint_url=ENDPOINT,  # Nutze die Variable
-        aws_access_key_id=ACCESS_KEY,
-        aws_secret_access_key=SECRET_KEY,
-        config=Config(signature_version='s3v4'),
-        region_name='eu-central-1',
-        use_ssl=USE_SSL
-    )
-
-    BUCKET_NAME = 'pmtiles-bucket'
-    # --- list buckets ---
-    # 
-    response = s3.list_buckets()
-    print("Buckets:", [b["Name"] for b in response["Buckets"]])
-
-    # --- create bucket if not exists ---
-    existing_buckets = [b["Name"] for b in response["Buckets"]]
-
-    if BUCKET_NAME not in existing_buckets:
-        print(f"Creating bucket: {BUCKET_NAME}")
-        s3.create_bucket(Bucket=BUCKET_NAME)
+    # TODO: check: result before upload
+    if result:
+        storage.upload_all_files(result)
     else:
-        print(f"Bucket already exists: {BUCKET_NAME}")
+        raise RuntimeError("Pipeline incomplete → upload skipped")
 
-
-        # Upload: Filename, Bucket, Key oarameter-namen: boto3 API.
-    s3.upload_file(
-        Filename=pmtiles_path,
-        Bucket=BUCKET_NAME,
-        Key="tiles.pmtiles"
-    )
-
-    print(f"Uploaded {pmtiles_path} → s3://{BUCKET_NAME}/{"tiles.pmtiles"}")
-
-
+# TODO: Exception handling (DEV vs PROD)
+# - DEV: full stacktrace for debugging
+# - PROD: clean error output for users
+# Controlled via ENV variable DEBUG
 if __name__ == "__main__":
     main()
