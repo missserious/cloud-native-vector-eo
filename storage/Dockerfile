@@ -1,9 +1,6 @@
 # Base MinIO Image
-FROM quay.io/minio/minio:latest
-
-# TODO: Save credentials in a .env file instead of hardcoding for security
-ENV MINIO_ROOT_USER=minioadmin
-ENV MINIO_ROOT_PASSWORD=minioadmin
+# FROM quay.io/minio/minio:latest
+FROM quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
 
 # Optional: Docker volume declaration (not strictly needed, using host mount)
 # Advantages:

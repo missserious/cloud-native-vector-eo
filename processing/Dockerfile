@@ -1,4 +1,4 @@
-# GDAL Base image
+# GDAL Base Image
 FROM ghcr.io/osgeo/gdal:ubuntu-full-3.10.1
 
 # Install system tools and pmtiles CLI
