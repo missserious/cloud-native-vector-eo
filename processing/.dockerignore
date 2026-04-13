@@ -1,3 +1,10 @@
 # TODO: Keep the image small – do not include automatically generated Python bytecode, output folders, or storage volumes
 
 # WARNING/ISSUE: Auto-save or auto-format in editors (VS Code, PyCharm, etc.) can accidentally escape or change patterns
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
