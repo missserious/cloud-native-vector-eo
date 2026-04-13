@@ -1,11 +1,18 @@
 # ---------------------------------
 # Output / generated tiles/parquet
 # ---------------------------------
+app/output
 *.mbtiles
 *.pmtiles
-*.parquet
+*.geoparquet
 
 # ---------------------------------------
 # Storage / ignore MinIO persistent data
 # ---------------------------------------
 minio_data/
+
+# ---------------------------------------
+# Test Data
+# ---------------------------------------
+processing/data/input/ndvi-change-vector-result-example_empty.txt
+processing/data/input/ndvi-change-vector-result-example_invalid.json

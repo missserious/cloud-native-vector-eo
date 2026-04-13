@@ -8,14 +8,17 @@ There is a growing demand for services that process **vector data**. This reposi
 
 This solution is implemented using **three Docker containers**:
 
-1. **Processing Container**  
-   Handles transformation of vector data.
+1. **Processing Container**
+
+   **Step 1:** Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
+
+   **Step 2:** After processing, the resulting artifacts are uploaded to the **Storage container (MinIO)**.
 
 2. **Storage Container**  
-   Stores processed vector data using **MinIO**. Provides the data for the **frontend**.
+   Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API. Provides the data for the **frontend**.
 
 3. **Frontend Container**  
-   Provides a user interface to visualize and interact with the vector data stored in the Storage container.
+   Provides a user interface to visualize and interact with the vector data stored in the **Storage Container** .
 
 ## Local Development / Setup Steps
 
@@ -45,9 +48,18 @@ sudo docker build -t minio-storage-mvp .
 ```bash
 sudo docker run -d --name minio \
  --network app-network \
+--env-file ../.env \
  -p 9000:9000 -p 9001:9001 \
  -v $(pwd)/minio_data:/data \
  minio-storage-mvp
+```
+
+**Troubleshooting**: MinIO is not reachable after system restart
+
+If the container already exists but is stopped (e.g., after shutting down your machine), you can restart it with:
+
+```bash
+sudo docker start minio
 ```
 
 **Step 5: Run Processing Container**
@@ -55,6 +67,7 @@ sudo docker run -d --name minio \
 ```bash
 sudo docker run --rm \
  --network app-network \
+ --env-file ../.env \
  -v $(pwd):/app \
  processing-mvp
 ```
@@ -75,17 +88,21 @@ sudo docker run --rm processing-mvp pytest
 
 ## TODO'S
 
-- Processing Container (2 separate processing steps and 1 upload step)
-  - [x] Generate MBTiles from GeoJSON (Tippecanoe)
-  - [x] Convert MBTiles → PMTiles
-  - [ ] Convert GeoJSON → GeoParquet (analytics dataset):
-    - [ ] Solution A: GeoParquet (geopandas, (+ pandas, + pyarrow, +shapely))
-    - [ ] Solution B: GDAL / ogr2ogr
-  - [x] Configure access to MinIO (endpoint, keys)
-  - [x] Create bucket for PMTiles in MinIO
-  - [x] Upload PMTiles to MinIO (boto3)
+- Processing Container
+  - [ ] Entry Point: main: input_file_path, call run(), start pipeline, start upload
+  - [ ] Single File Pipeline: class ConversionPipeline
+    - [ ] run: manages pipeline, validation and conversion
+      - [x] Convert MBTiles → PMTiles
+      - [x] Convert GeoJSON → GeoParquet (analytics dataset):
+        - [x] Solution A: geopandas (+ pandas, + pyarrow, +shapely)
+        - [x] Solution B: GDAL / ogr2ogr + ⚠️ parquet support
+  - [ ] Upload: class MinioStorage
+    - [x] Configure access to MinIO (endpoint, keys)
+    - [x] Create bucket for PMTiles in MinIO
+    - [ ] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
   - [ ] Tests: pytest (connection2minIO)
   - [ ] Basic logging / error handling
+  - [ ] Linting / Prettier integration for Processing container
   - [ ] Hot Reload (Issue: watchdog)
   - [ ] PROD: versioned upload
 
@@ -120,7 +137,7 @@ sudo docker run --rm processing-mvp pytest
        By putting them in the same network, containers can communicate via their container names.
 
 - [ ] Docker Compose orchestration (Processing + Storage + Frontend)
+  - [ ] Processing Dockerfile: see TODOs
 - [ ] Development environment configurations (env files, debug setup)
-- [ ] Linting / Prettier integration for Processing container
 - [ ] Basic testing (pipeline & storage)
 - [ ] Documentation (setup + workflow)
