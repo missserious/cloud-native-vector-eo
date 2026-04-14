@@ -2,6 +2,8 @@
 import boto3
 from botocore.client import Config
 import os
+import logging
+logging.basicConfig(level=logging.INFO)
 
 class MinioStorage:
 
@@ -31,13 +33,13 @@ class MinioStorage:
             existing_buckets = [b["Name"] for b in response["Buckets"]]
 
             if self.bucket_name not in existing_buckets:
-                print(f"Creating bucket: {self.bucket_name}")
+                logging.info("Uploaded: parquet_gpd")(f"Creating bucket: {self.bucket_name}")
                 self.s3.create_bucket(Bucket=self.bucket_name)
             else:
-                print(f"Bucket already exists: {self.bucket_name}")
+                logging.info(f"Bucket already exists: {self.bucket_name}")
 
         except Exception as e:
-            print(f"Error while checking bucket '{self.bucket_name}': {e}")
+            logging.info(f"Error while checking bucket '{self.bucket_name}': {e}")
 
     def upload_all_files(self, result: dict[str, str]) -> None:
         for key, file_path in result.items():
@@ -49,4 +51,6 @@ class MinioStorage:
                 Bucket=self.bucket_name,
                 Key=object_name
             )
-            print(f"Uploaded: {object_name}")
+            logging.info(f"Uploaded: {object_name}")
+
+    # TODO: get_signed_url

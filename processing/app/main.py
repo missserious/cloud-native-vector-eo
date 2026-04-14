@@ -36,9 +36,5 @@ def main() -> None:
     else:
         raise RuntimeError("Pipeline incomplete → upload skipped")
 
-# TODO: Exception handling (DEV vs PROD)
-# - DEV: full stacktrace for debugging
-# - PROD: clean error output for users
-# Controlled via ENV variable DEBUG
 if __name__ == "__main__":
     main()

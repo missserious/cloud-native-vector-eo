@@ -1,31 +1,63 @@
 # [Cloud-Native Architecture for Vector EO Products](#)
 
-## Context
-
-There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
+**Context:** There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
 ## Architecture Overview
 
 This solution is implemented using **three Docker containers**:
 
-1. **Processing Container**
+1.  **Processing Container**
 
-   **Step 1:** Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
+    **Step 1:** Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
 
-   **Step 2:** After processing, the resulting artifacts are uploaded to the **Storage container (MinIO)**.
+    **Step 2:** After processing, the resulting artifacts are uploaded to the **Storage container (MinIO)**.
 
-2. **Storage Container**  
-   Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API. Provides the data for the **frontend**.
+    **Step 3:** API Endpoint.
 
-3. **Frontend Container**  
-   Provides a user interface to visualize and interact with the vector data stored in the **Storage Container** .
+2.  **Storage Container**  
+    Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API. Provides the data for the **frontend**.
+
+3.  **Frontend Container**  
+    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container** .
+
+```
+                      ┌───────────────────────┐
+                      │       FRONTEND        │
+                      │ (Browser / React)     │
+                      └──────────┬────────────┘
+                                 │
+             GET /results        │      Download processed files
+           (request signed URLs) │
+                                 │
+      ┌──────────────────────────┴─────────────────────────┐
+      │                                                    │
+      │                                                    │
+      ▼                                                    ▼
+┌────────────────────────┐                      ┌────────────────────────┐
+│   API + PROCESSING     │                      │        MINIO           │
+│   (FastAPI Container)  │                      │   Object Storage       │
+│                        │                      │                        │
+│  POST /process         │                      │ - parquet outputs      │
+│  → runs pipeline       │                      │ - pmtiles tiles        │
+│  → uploads to MinIO    │                      │                        │
+│                        │                      │                        │
+│  GET /results          │                      │                        │
+│  → generates signed    │                      │                        │
+│    URLs                │                      │                        │
+└──────────┬─────────────┘                      └──────────┬─────────────┘
+           │                                               ▲
+           │ signed URLs                                   │
+           └───────────────────────────────────────────────┘
+                        direct object download
+
+```
 
 ## Local Development / Setup Steps
 
-To get the architecture running locally, follow these **five main steps**:
+To get the architecture running locally, follow these **7 main steps**:
 
-**Step 1: Create Docker Network**  
- This allows containers to communicate with each other.
+**Step 1: Create Docker Network**
+This allows containers to communicate with each other.
 
 ```bash
 sudo docker network create app-network
@@ -68,6 +100,20 @@ sudo docker start minio
 sudo docker run --rm \
  --network app-network \
  --env-file ../.env \
+ -v $(pwd)/app:/app \
+ -v $(pwd)/data:/app/data \
+ -p 8000:8000 \
+ processing-mvp
+```
+
+````
+
+**Step 6: Build Frontend Image**
+
+```bash
+sudo docker run --rm \
+ --network app-network \
+ --env-file ../.env \
  -v $(pwd):/app \
  processing-mvp
 ```
@@ -79,6 +125,11 @@ sudo docker run --rm \
 Access MinIO Interface via Browser:
 `http://localhost:9001`
 enter credentials
+
+### Test processing webserver
+
+Access webserver via Browser:
+`http://localhost:8000/health`
 
 ### Run Pytests
 
@@ -99,12 +150,24 @@ sudo docker run --rm processing-mvp pytest
   - [ ] Upload: class MinioStorage
     - [x] Configure access to MinIO (endpoint, keys)
     - [x] Create bucket for PMTiles in MinIO
-    - [ ] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
-  - [ ] Tests: pytest (connection2minIO)
+    - [x] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
+  - [ ] API Endpoint creation - Flow
+    - [ ] 1. container start
+    - [ ] 2. API (uvicorn) start
+    - [ ] 3. Post /process gets results
+    - [ ] 4. pipeline runs once
+    - [ ] 5. data upload to minIO
+    - [ ] API stays active
+    - [ ] GET /results always possible
+    - [ ] Test Enpoint with curl
+    - [x] Change batch container to service container
+    - [x] Webserver: uvicorn
+
+  - [ ] Tests: pytest
+    - [ ] Test pipeline
+    - [ ] Test connection to minIO
   - [ ] Basic logging / error handling
   - [ ] Linting / Prettier integration for Processing container
-  - [ ] Hot Reload (Issue: watchdog)
-  - [ ] PROD: versioned upload
 
 - Storage Container (MinIO)
   - [x] Setup MinIO container
@@ -131,13 +194,28 @@ sudo docker run --rm processing-mvp pytest
 ### Optional / Architecture Features & Future Improvements
 
 - [ ] Docker Diagram (e.g. Mermaid/PNG)
-- [x] Docker Network  
-       Enables communication between containers.  
-       Without it, localhost in one container points only to itself, so containers cannot reach each other.  
+- [x] Docker Network
+       Enables communication between containers.
+       Without it, localhost in one container points only to itself, so containers cannot reach each other.
        By putting them in the same network, containers can communicate via their container names.
-
 - [ ] Docker Compose orchestration (Processing + Storage + Frontend)
   - [ ] Processing Dockerfile: see TODOs
 - [ ] Development environment configurations (env files, debug setup)
 - [ ] Basic testing (pipeline & storage)
-- [ ] Documentation (setup + workflow)
+- [ ] Documentation (setup + workflow) - Table of overview
+
+### Nice to have
+
+- [ ] Processing: **multi-stage docker build** for clean/minimal image
+  - Stage 1: Build PMTiles CLI + any other temporary tools (e.g., curl, tar)
+  - Stage 2: Runtime stage with only Python3, Tippecanoe, PMTiles CLI + scripts
+  - Alternative for single-stage MVP: purge temporary tools (curl, tar) after installation
+- [ ] Processing: DEV-SERVER
+  - Hot Reload (Issue: watchdog)
+- [ ] Processing: in PROD: versioned upload
+- [ ] Processing: Exception handling (DEV vs PROD)
+  - DEV: full stacktrace for debugging
+  - PROD: clean error output for users
+  - Controlled via ENV variable DEBUG
+- [ ] Processing: FastAPI Lifespan Context instead of on_event
+````
