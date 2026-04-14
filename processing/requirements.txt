@@ -1,5 +1,6 @@
 # minIO 
 boto3==1.42.85
+
 # tests
 pytest==9.0.3
 
@@ -15,3 +16,7 @@ pyproj==3.6.1
 
 # env
 python-dotenv==1.2.2
+
+# webserver
+uvicorn[standard]==0.43.0
+fastapi==0.135.2

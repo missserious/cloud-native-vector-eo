@@ -27,11 +27,11 @@ COPY . /app/
 # TODO: Optional: .dockerignore - see comment/issue in file
 
 # PROD-SERVER
-CMD ["python3", "app/main.py"]
-# TODO: DEV-SERVER
+# CMD ["python3", "app/main.py"]
 
-# TODO: Optional: multi-stage build for clean/minimal image
-# - Stage 1: Build PMTiles CLI + any other temporary tools (e.g., curl, tar)
-# - Stage 2: Runtime stage with only Python3, Tippecanoe, PMTiles CLI + scripts
-# - Alternative for single-stage MVP: purge temporary tools (curl, tar) after installation
-# Benefit: temporary tools do not appear in final layers → smaller and cleaner image
+# port 8000
+EXPOSE 8000
+
+CMD ["uvicorn", "app.api:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
