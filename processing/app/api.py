@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import FastAPI
+
 from conversion_pipeline import ConversionPipeline
 from minio_storage import MinioStorage
-import logging
+
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
@@ -9,7 +12,10 @@ app = FastAPI()
 storage: MinioStorage = MinioStorage()
 pipeline: ConversionPipeline = ConversionPipeline("data/output/")
 
-RESULT = None
+RESULT: dict[str, str]
+
+# DuckDB Connection global - con = duckdb.connect()
+
 
 @app.on_event("startup")
 def startup():
@@ -29,7 +35,22 @@ def startup():
     logging.info("API IS RUNNING")
     logging.info(RESULT)
 
+
 # TODO: signed URLs
 @app.get("/results")
-def get_results():
-    return RESULT    
+def get_results() -> dict[str, str]:
+    return RESULT
+
+
+# New Endpoint - GeoParquet Query → JSON
+# @app.get("/features")
+# def get_features():
+#     parquet_path = RESULT["parquet"]
+
+#     result = con.execute(f"""
+#         SELECT *
+#         FROM 's3://{storage.bucket_name}/{parquet_path}'
+#         LIMIT 100
+#     """).fetchdf()
+
+#     return result.to_dict(orient="records")

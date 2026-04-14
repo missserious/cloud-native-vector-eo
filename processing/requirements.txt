@@ -20,3 +20,11 @@ python-dotenv==1.2.2
 # webserver
 uvicorn[standard]==0.43.0
 fastapi==0.135.2
+
+# query engine for geoparquet
+duckdb==1.4.1
+
+# dev-mode tools
+ruff==0.15.6
+black==26.3.1
+mypy==1.19.1

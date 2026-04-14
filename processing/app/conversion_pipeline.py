@@ -1,15 +1,16 @@
 # from typing import TypedDict
+import os
+import subprocess
+
 import geopandas as gpd
 from shapely.validation import make_valid
-import subprocess
-import os
+
 
 class ConversionPipeline:
 
     def __init__(self, output_dir: str):
         self.output_dir = output_dir
         os.makedirs(self.output_dir, exist_ok=True)
-
 
     # TODO: Structured Return Type/Structured Data Return (via dict)
     def run(self, input_file_path: str) -> dict[str, str]:
@@ -23,7 +24,7 @@ class ConversionPipeline:
         return {
             "parquet_gpd": parquet_gpd,
             "parquet_ogr": parquet_ogr,
-            "pmtiles": pmtiles
+            "pmtiles": pmtiles,
         }
 
     # ---------------------
@@ -38,7 +39,7 @@ class ConversionPipeline:
                 f"  ├─ Path: {input_file_path}\n"
                 f"  → Pipeline stopped\n"
             )
-        
+
         try:
             gdf = gpd.read_file(input_file_path)
         except Exception as e:
@@ -49,7 +50,7 @@ class ConversionPipeline:
                 f" → Error: {str(e)}\n"
                 f"  → Pipeline stopped\n"
             ) from e
-        
+
         if gdf.crs is None:
             raise RuntimeError(
                 f" MISSING CRS\n"
@@ -63,25 +64,18 @@ class ConversionPipeline:
         gdf["geometry"] = gdf["geometry"].apply(make_valid)
 
         return gdf
-            
+
     # ---------------------
     # Parquet: geopandas
     # ---------------------
     def geojson_to_parquet_geopandas(self, gdf: gpd.GeoDataFrame) -> str:
-        output_path: str = os.path.join(
-            self.output_dir, 
-            "parquet_geopandas.geoparquet"
-            )
-        # best practise 
+        output_path: str = os.path.join(self.output_dir, "parquet_geopandas.geoparquet")
+        # best practise
         if os.path.exists(output_path):
             os.remove(output_path)
 
         try:
-            gdf.to_parquet(
-                output_path,
-                engine="pyarrow",
-                index=False
-            )
+            gdf.to_parquet(output_path, engine="pyarrow", index=False)
 
         except Exception as e:
             raise RuntimeError(
@@ -97,29 +91,26 @@ class ConversionPipeline:
     # -----------------------
     def geojson_to_parquet_ogr2ogr(self, input_file_path: str) -> str:
 
-        output_path = os.path.join(
-            self.output_dir,
-            "parquet_ogr2ogr.geoparquet"
-        )
-        # best practise 
+        output_path = os.path.join(self.output_dir, "parquet_ogr2ogr.geoparquet")
+        # best practise
         if os.path.exists(output_path):
             os.remove(output_path)
 
         cmd = [
             "ogr2ogr",
-            "-f", "Parquet",
+            "-f",
+            "Parquet",
             output_path,
             input_file_path,
-            "-lco", "GEOMETRY_NAME=geometry",
-            "-lco", "FID=id",
-            "-lco", "COMPRESSION=SNAPPY"
+            "-lco",
+            "GEOMETRY_NAME=geometry",
+            "-lco",
+            "FID=id",
+            "-lco",
+            "COMPRESSION=SNAPPY",
         ]
 
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(cmd, capture_output=True, text=True)
 
         if result.returncode != 0:
             raise RuntimeError(
@@ -129,21 +120,15 @@ class ConversionPipeline:
             )
 
         return output_path
-    
+
     # ---------------------
     # Tiles
     # ---------------------
     def geojson_to_pmtiles(self, input_file_path: str) -> str:
 
-        output_mbtiles_path: str = os.path.join(
-            self.output_dir,
-            "tiles.mbtiles"
-        )
+        output_mbtiles_path: str = os.path.join(self.output_dir, "tiles.mbtiles")
 
-        output_pmtiles_path: str = os.path.join(
-            self.output_dir,
-            "tiles.pmtiles"
-        )
+        output_pmtiles_path: str = os.path.join(self.output_dir, "tiles.pmtiles")
 
         # best practice cleanup
         for path in [output_mbtiles_path, output_pmtiles_path]:
@@ -151,20 +136,30 @@ class ConversionPipeline:
                 os.remove(path)
 
         try:
-            subprocess.run([
-                "tippecanoe",
-                "-o", output_mbtiles_path,
-                "-Z", "0", "-z", "14",
-                "--drop-densest-as-needed",
-                "--extend-zooms-if-still-dropping",
-                input_file_path
-            ], check=True, capture_output=True, text=True)
+            subprocess.run(
+                [
+                    "tippecanoe",
+                    "-o",
+                    output_mbtiles_path,
+                    "-Z",
+                    "0",
+                    "-z",
+                    "14",
+                    "--drop-densest-as-needed",
+                    "--extend-zooms-if-still-dropping",
+                    input_file_path,
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
-            subprocess.run([
-                "pmtiles", "convert",
-                output_mbtiles_path,
-                output_pmtiles_path
-            ], check=True, capture_output=True, text=True)
+            subprocess.run(
+                ["pmtiles", "convert", output_mbtiles_path, output_pmtiles_path],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
 
         except subprocess.CalledProcessError as e:
             raise RuntimeError(
@@ -176,8 +171,7 @@ class ConversionPipeline:
 
         except Exception as e:
             raise RuntimeError(
-                "UNEXPECTED ERROR IN PMTILES PIPELINE\n"
-                f" → Reason: {str(e)}"
+                "UNEXPECTED ERROR IN PMTILES PIPELINE\n" f" → Reason: {str(e)}"
             ) from e
 
         return output_pmtiles_path

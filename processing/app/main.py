@@ -1,15 +1,17 @@
+from dotenv import load_dotenv
+
 from conversion_pipeline import ConversionPipeline
 from minio_storage import MinioStorage
 
-from dotenv import load_dotenv
-load_dotenv() 
+load_dotenv()
+
 
 # TODO: Type Checker (mypy / pyright), Prettier (Code Formatter), Linter (ruff / flake8)
-# TODO: Typisieren 
+# TODO: Typisieren
 # TODO: logging.error instead of print - import logging - logging.info
 # TODO: ENV validation,
 def main() -> None:
-    # Entry Point 
+    # Entry Point
     #
     # Flow:
     # Storage Init → Bucket Setup → Pipeline Execution → Output Validation → Conditional Upload
@@ -17,7 +19,7 @@ def main() -> None:
     # Rules:
     # - No upload if any pipeline step fails
     # - No upload if any expected output file is missing
-    # - Fail fast on exceptions 
+    # - Fail fast on exceptions
 
     storage: MinioStorage = MinioStorage()
     storage.create_bucket()
@@ -35,6 +37,7 @@ def main() -> None:
         storage.upload_all_files(result)
     else:
         raise RuntimeError("Pipeline incomplete → upload skipped")
+
 
 if __name__ == "__main__":
     main()
