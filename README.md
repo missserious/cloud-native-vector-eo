@@ -2,6 +2,26 @@
 
 **Context:** There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
+## Table of Contents
+
+- [Cloud-Native Architecture for Vector EO Products](#cloud-native-architecture-for-vector-eo-products)
+  - [Table of Contents](#table-of-contents)
+  - [Architecture Overview](#architecture-overview)
+  - [Data Flow](#data-flow)
+  - [Data Products](#data-products)
+  - [Local Development / Setup](#local-development--setup)
+  - [API Overview](#api-overview)
+  - [Testing](#testing)
+    - [Run Pytests](#run-pytests)
+  - [Setup Verification](#setup-verification)
+    - [Test minIO](#test-minio)
+    - [Test processing webserver](#test-processing-webserver)
+  - [Troubleshooting](#troubleshooting)
+  - [Project Structure](#project-structure)
+  - [TODO'S / Roadmap](#todos--roadmap)
+    - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
+    - [Nice to have](#nice-to-have)
+
 ## Architecture Overview
 
 This solution is implemented using **three Docker containers**:
@@ -15,10 +35,15 @@ This solution is implemented using **three Docker containers**:
     **Step 3:** API Endpoint.
 
 2.  **Storage Container**  
-    Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API. Provides the data for the **frontend**.
+    Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
+    Provides two types of geospatial data access:
+    1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
+    2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
+    - GeoParquet files are not consumed directly by the frontend.
+    - They are accessed via query endpoints in the Processing API using DuckDB.
 
 3.  **Frontend Container**  
-    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container** .
+    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
 
 ```
                       ┌───────────────────────┐
@@ -52,7 +77,11 @@ This solution is implemented using **three Docker containers**:
 
 ```
 
-## Local Development / Setup Steps
+## Data Flow
+
+## Data Products
+
+## Local Development / Setup
 
 To get the architecture running locally, follow these **7 main steps**:
 
@@ -106,8 +135,6 @@ sudo docker run --rm \
  processing-mvp
 ```
 
-````
-
 **Step 6: Build Frontend Image**
 
 ```bash
@@ -118,7 +145,17 @@ sudo docker run --rm \
  processing-mvp
 ```
 
-## Test Local Setup
+## API Overview
+
+## Testing
+
+### Run Pytests
+
+```bash
+sudo docker run --rm processing-mvp pytest
+```
+
+## Setup Verification
 
 ### Test minIO
 
@@ -129,29 +166,29 @@ enter credentials
 ### Test processing webserver
 
 Access webserver via Browser:
-`http://localhost:8000/health`
+`http://localhost:8000/results`
 
-### Run Pytests
+## Troubleshooting
 
-```bash
-sudo docker run --rm processing-mvp pytest
-```
+## Project Structure
 
-## TODO'S
+## TODO'S / Roadmap
 
 - Processing Container
-  - [ ] Entry Point: main: input_file_path, call run(), start pipeline, start upload
-  - [ ] Single File Pipeline: class ConversionPipeline
-    - [ ] run: manages pipeline, validation and conversion
+  - [x] Entry Point: API Layer - startup
+    - [ ] orchestration: bucket, input_file_path, pipeline run(), signed urls, endpoint creation
+      - [x] Single File Pipeline: class ConversionPipeline
+      - [x] run: manages pipeline, validation and conversion
       - [x] Convert MBTiles → PMTiles
       - [x] Convert GeoJSON → GeoParquet (analytics dataset):
         - [x] Solution A: geopandas (+ pandas, + pyarrow, +shapely)
         - [x] Solution B: GDAL / ogr2ogr + ⚠️ parquet support
-  - [ ] Upload: class MinioStorage
-    - [x] Configure access to MinIO (endpoint, keys)
-    - [x] Create bucket for PMTiles in MinIO
-    - [x] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
-  - [ ] API Endpoint creation - Flow
+    - [ ] Upload: class MinioStorage
+      - [x] Configure access to MinIO (endpoint, keys)
+      - [x] Create bucket for PMTiles in MinIO
+      - [x] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
+      - [ ] get_signed_url
+  - [ ] API Endpoint creation - Flow - Signed urls
     - [ ] 1. container start
     - [ ] 2. API (uvicorn) start
     - [ ] 3. Post /process gets results
@@ -159,13 +196,17 @@ sudo docker run --rm processing-mvp pytest
     - [ ] 5. data upload to minIO
     - [ ] API stays active
     - [ ] GET /results always possible
-    - [ ] Test Enpoint with curl
+    - [ ] Test Endpoint with curl
     - [x] Change batch container to service container
     - [x] Webserver: uvicorn
+  - [ ] API Endpoint creation - Flow - geoparquet
+    - [ ] connection to minIO - duckdb
+    - [ ] Endpoint for features
 
   - [ ] Tests: pytest
-    - [ ] Test pipeline
-    - [ ] Test connection to minIO
+    - [x] Basic setup
+    - [ ] Test case: Basic testing pipeline
+    - [ ] Test case: Basic testing connection to minIO
   - [ ] Basic logging / error handling
   - [ ] Linting / Prettier integration for Processing container
 
@@ -193,16 +234,16 @@ sudo docker run --rm processing-mvp pytest
 
 ### Optional / Architecture Features & Future Improvements
 
-- [ ] Docker Diagram (e.g. Mermaid/PNG)
 - [x] Docker Network
-       Enables communication between containers.
-       Without it, localhost in one container points only to itself, so containers cannot reach each other.
-       By putting them in the same network, containers can communicate via their container names.
+  - Enables communication between containers.
+  - Without it, localhost in one container points only to itself, so containers cannot reach each other.
+  - By putting them in the same network, containers can communicate via their container names.
+
 - [ ] Docker Compose orchestration (Processing + Storage + Frontend)
   - [ ] Processing Dockerfile: see TODOs
 - [ ] Development environment configurations (env files, debug setup)
-- [ ] Basic testing (pipeline & storage)
 - [ ] Documentation (setup + workflow) - Table of overview
+  - [ ] Docker Diagram (e.g. Mermaid/PNG)
 
 ### Nice to have
 
@@ -218,4 +259,5 @@ sudo docker run --rm processing-mvp pytest
   - PROD: clean error output for users
   - Controlled via ENV variable DEBUG
 - [ ] Processing: FastAPI Lifespan Context instead of on_event
-````
+
+`--------------------------------------------------`
