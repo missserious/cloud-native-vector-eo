@@ -12,9 +12,6 @@ There is a growing demand for services that process **vector data**. This reposi
 - [Setup Verification](#setup-verification)
 - [Troubleshooting](#troubleshooting)
 - [Project Structure](#project-structure)
-# - [TODO'S / Roadmap](#todos--roadmap)
-# - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
-# - [Nice to have](#nice-to-have)
 
 
 ## Architecture Overview
