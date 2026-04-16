@@ -16,3 +16,11 @@ minio_data/
 # ---------------------------------------
 processing/data/input/ndvi-change-vector-result-example_empty.txt
 processing/data/input/ndvi-change-vector-result-example_invalid.json
+
+# ---------------------------------------
+# Python Bytecode Cache
+# ---------------------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd

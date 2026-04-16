@@ -1,10 +1,17 @@
 # from typing import TypedDict
 import os
+import logging
+
+# GDAL configuration (must be set before importing geopandas)
+os.environ["OGR_GEOJSON_MAX_OBJ_SIZE"] = os.getenv(
+    "OGR_GEOJSON_MAX_OBJ_SIZE",
+    "0"
+)
+
 import subprocess
 
 import geopandas as gpd
 from shapely.validation import make_valid
-
 
 class ConversionPipeline:
 
@@ -75,7 +82,14 @@ class ConversionPipeline:
             os.remove(output_path)
 
         try:
-            gdf.to_parquet(output_path, engine="pyarrow", index=False)
+            compression = os.getenv("GEOPANDAS_PARQUET_COMPRESSION", "snappy")
+
+            gdf.to_parquet(
+                output_path,
+                engine="pyarrow",
+                index=False,
+                compression=compression,
+            )
 
         except Exception as e:
             raise RuntimeError(
@@ -96,18 +110,16 @@ class ConversionPipeline:
         if os.path.exists(output_path):
             os.remove(output_path)
 
+        compression = os.getenv("OGR_PARQUET_COMPRESSION", "SNAPPY")
+
         cmd = [
             "ogr2ogr",
-            "-f",
-            "Parquet",
+            "-f", "Parquet",
             output_path,
             input_file_path,
-            "-lco",
-            "GEOMETRY_NAME=geometry",
-            "-lco",
-            "FID=id",
-            "-lco",
-            "COMPRESSION=SNAPPY",
+            "-lco", "GEOMETRY_NAME=geometry",
+            "-lco", "FID=id",
+            "-lco", f"COMPRESSION={compression}",
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -127,7 +139,6 @@ class ConversionPipeline:
     def geojson_to_pmtiles(self, input_file_path: str) -> str:
 
         output_mbtiles_path: str = os.path.join(self.output_dir, "tiles.mbtiles")
-
         output_pmtiles_path: str = os.path.join(self.output_dir, "tiles.pmtiles")
 
         # best practice cleanup
@@ -136,19 +147,23 @@ class ConversionPipeline:
                 os.remove(path)
 
         try:
+            cmd = [
+                "tippecanoe",
+                "-o", output_mbtiles_path,
+                "-Z", os.getenv("TILE_ZOOM_MIN", "0"),
+                "-z", os.getenv("TILE_ZOOM_MAX", "10"),
+            ]
+            if os.getenv("TIPPECANOE_READ_PARALLEL", "true") == "true":
+                cmd.append("--read-parallel")
+
+            if os.getenv("TIPPECANOE_DROP_DENSE", "true") == "true":
+                cmd.append("--drop-densest-as-needed")
+
+            cmd.append(input_file_path)
+
+            # logging.info(f"TIPPECANOE CMD: {cmd}")
             subprocess.run(
-                [
-                    "tippecanoe",
-                    "-o",
-                    output_mbtiles_path,
-                    "-Z",
-                    "0",
-                    "-z",
-                    "14",
-                    "--drop-densest-as-needed",
-                    "--extend-zooms-if-still-dropping",
-                    input_file_path,
-                ],
+                cmd,
                 check=True,
                 capture_output=True,
                 text=True,

@@ -1,4 +1,5 @@
 import logging
+import os
 
 from fastapi import FastAPI
 
@@ -10,9 +11,10 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
 storage: MinioStorage = MinioStorage()
-pipeline: ConversionPipeline = ConversionPipeline("data/output/")
+output_dir = os.getenv("OUTPUT_DIR", "data/output")
+pipeline: ConversionPipeline = ConversionPipeline(output_dir)
 
-RESULT: dict[str, str]
+RESULT: dict[str, str] | None = None
 
 # DuckDB Connection global - con = duckdb.connect()
 
@@ -23,7 +25,10 @@ def startup():
 
     storage.create_bucket()
 
-    input_file_path: str = "data/input/ndvi-change-vector-result-example.json"
+    input_file_path: str = os.path.join(
+        os.getenv("INPUT_DIR", "data/input"),
+        "ndvi-change-vector-result-example.json"
+    )
 
     # Run pipeline (returns result=output file paths)
     # TODO: TypeDict
@@ -33,7 +38,7 @@ def startup():
 
     RESULT = result
     logging.info("API IS RUNNING")
-    logging.info(RESULT)
+    # logging.info(RESULT)
 
 
 # TODO: signed URLs

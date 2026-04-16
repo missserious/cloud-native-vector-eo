@@ -18,7 +18,7 @@ class MinioStorage:
         use_ssl = os.getenv("USE_SSL", "False").lower() == "true"
         region = os.getenv("REGION", "eu-central-1")
 
-        self.bucket_name = os.getenv("BUCKET_NAME")
+        self.bucket_name = os.getenv("BUCKET_NAME", "geo-bucket")
 
         self.s3 = boto3.client(
             "s3",
