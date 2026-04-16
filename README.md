@@ -1,63 +1,64 @@
 # [Cloud-Native Architecture for Vector EO Products](#)
 
-**Context:** There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
+There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
-## Table of Contents
+- [Architecture Overview](#architecture-overview)
+- [Data Flow](#data-flow)
+- [Data Products](#data-products)
+- [Local Development / Setup](#local-development--setup)
+- [API Overview](#api-overview)
+- [Testing](#testing)
+- [Run Pytests](#run-pytests)
+- [Setup Verification](#setup-verification)
+- [Troubleshooting](#troubleshooting)
+- [Project Structure](#project-structure)
+# - [TODO'S / Roadmap](#todos--roadmap)
+# - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
+# - [Nice to have](#nice-to-have)
 
-- [Cloud-Native Architecture for Vector EO Products](#cloud-native-architecture-for-vector-eo-products)
-  - [Table of Contents](#table-of-contents)
-  - [Architecture Overview](#architecture-overview)
-  - [Data Flow](#data-flow)
-  - [Data Products](#data-products)
-  - [Local Development / Setup](#local-development--setup)
-  - [API Overview](#api-overview)
-  - [Testing](#testing)
-    - [Run Pytests](#run-pytests)
-  - [Setup Verification](#setup-verification)
-    - [Test minIO](#test-minio)
-    - [Test processing webserver](#test-processing-webserver)
-  - [Troubleshooting](#troubleshooting)
-  - [Project Structure](#project-structure)
-  - [TODO'S / Roadmap](#todos--roadmap)
-    - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
-    - [Nice to have](#nice-to-have)
 
 ## Architecture Overview
 
 This solution is implemented using **three Docker containers**:
+> ℹ️ Note: This is a note! ⚠️ 
 
-1.  **Processing Container**
 
-    **Step 1:** Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
+```md
+> API + PROCESSING Container
+	Step 1: Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
+    Step 2: After processing, the resulting artifacts are uploaded to **MinIO STORAGE**.
+    Step 3: API Endpoint.
+```
 
-    **Step 2:** After processing, the resulting artifacts are uploaded to the **Storage container (MinIO)**.
-
-    **Step 3:** API Endpoint.
-
-2.  **Storage Container**  
+```md
+> MinIO STORAGE Container
     Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
     Provides two types of geospatial data access:
-    1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
-    2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
-    - GeoParquet files are not consumed directly by the frontend.
-    - They are accessed via query endpoints in the Processing API using DuckDB.
+		1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
+		2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
+    GeoParquet files are not consumed directly by the frontend.
+    They are accessed via query endpoints in the Processing API using DuckDB.
+```
+```md
+> FRONTEND Container
+	Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
+```
 
-3.  **Frontend Container**  
-    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
+
 
 ```
-                      ┌───────────────────────┐
-                      │       FRONTEND        │
-                      │ (Browser / React)     │
-                      └──────────┬────────────┘
-                                 │
-             GET /results        │      Download processed files
-           (request signed URLs) │
-                                 │
-      ┌──────────────────────────┴─────────────────────────┐
-      │                                                    │
-      │                                                    │
-      ▼                                                    ▼
+                        ┌───────────────────────┐
+                        │       FRONTEND        │
+                        │ (Browser / React)     │
+                        └──────────┬────────────┘
+                                   │
+               GET /results        │      Download
+             (request signed URLs) │      processed pmtiles
+                                   │
+            ┌──────────────────────┴─────────────────────────┐
+            │                                                │
+            │                                                │
+            ▼                                                ▼
 ┌────────────────────────┐                      ┌────────────────────────┐
 │   API + PROCESSING     │                      │        MINIO           │
 │   (FastAPI Container)  │                      │   Object Storage       │
@@ -73,13 +74,18 @@ This solution is implemented using **three Docker containers**:
            │                                               ▲
            │ signed URLs                                   │
            └───────────────────────────────────────────────┘
-                        direct object download
+                        direct parquet access
 
 ```
 
+
 ## Data Flow
 
+
+
 ## Data Products
+
+
 
 ## Local Development / Setup
 
@@ -135,14 +141,38 @@ sudo docker run --rm \
  processing-mvp
 ```
 
-**Step 6: Build Frontend Image**
+**Step 6: DEV: Build Frontend Image**
+
+```bash
+sudo docker build -f Dockerfile.dev -t frontend-mvp-dev .
+```
+
+**Step 7: DEV: Run Frontend Container**
 
 ```bash
 sudo docker run --rm \
- --network app-network \
- --env-file ../.env \
- -v $(pwd):/app \
- processing-mvp
+  --network app-network \
+  --env-file ../.env \
+  -p 5173:5173 \
+  -v $(pwd):/app \
+  -v /app/node_modules \
+  frontend-mvp-dev
+```
+
+**Step 8: PROD: Build Frontend Image**
+
+```bash
+sudo docker build -t frontend-mvp .
+```
+
+**Step 9: PROD: Run Frontend Container**
+
+```bash
+sudo docker run --rm \
+  --network app-network \
+  --env-file ../.env \
+  -p 8080:80 \
+  frontend-mvp
 ```
 
 ## API Overview
@@ -168,6 +198,11 @@ enter credentials
 Access webserver via Browser:
 `http://localhost:8000/results`
 
+### Test frontend
+
+Access frontend via Browser:
+`http://localhost:8080`
+
 ## Troubleshooting
 
 ## Project Structure
@@ -176,7 +211,7 @@ Access webserver via Browser:
 
 - Processing Container
   - [x] Entry Point: API Layer - startup
-    - [ ] orchestration: bucket, input_file_path, pipeline run(), signed urls, endpoint creation
+    - [ ] Orchestration: bucket, input_file_path, pipeline run(), signed urls, endpoint creation
       - [x] Single File Pipeline: class ConversionPipeline
       - [x] run: manages pipeline, validation and conversion
       - [x] Convert MBTiles → PMTiles
@@ -202,22 +237,26 @@ Access webserver via Browser:
   - [ ] API Endpoint creation - Flow - geoparquet
     - [ ] connection to minIO - duckdb
     - [ ] Endpoint for features
+  - [ ] Input contract: All input GeoJSON files are expected to be: In WGS84 (EPSG:4326)
+    - [ ] Add input format support via loader layer (GeoJSON, FlatGeobuf (.fgb), GeoPackage (.gpkg))
 
   - [ ] Tests: pytest
     - [x] Basic setup
-    - [ ] Test case: Basic testing pipeline
+    - [x] Prepare and test testdata and upload per lfs
+    - [ ] Test case: Basic testing pipeline with testdata
     - [ ] Test case: Basic testing connection to minIO
   - [ ] Basic logging / error handling
-  - [ ] Linting / Prettier integration for Processing container
+  - [ ] Linting / Prettier integration for Processing container > documentation
 
 - Storage Container (MinIO)
   - [x] Setup MinIO container
 
 - Frontend Container
-  - [ ] Setup
-    - [ ] Vite (Build Tool)
-    - [ ] React
-    - [ ] TypeScript
+  - [x] Setup
+    - [x] Vite (Build Tool)
+    - [x] React
+    - [x] TypeScript
+    - [x] Prod and Test 
 
   - [ ] Mapping / Visualization
     - [ ] React Map GL
@@ -259,5 +298,3 @@ Access webserver via Browser:
   - PROD: clean error output for users
   - Controlled via ENV variable DEBUG
 - [ ] Processing: FastAPI Lifespan Context instead of on_event
-
-`--------------------------------------------------`
