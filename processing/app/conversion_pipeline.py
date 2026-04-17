@@ -150,6 +150,7 @@ class ConversionPipeline:
             cmd = [
                 "tippecanoe",
                 "-o", output_mbtiles_path,
+                "-l", "data",  # LAYER NAME FOR FRONTEND
                 "-Z", os.getenv("TILE_ZOOM_MIN", "0"),
                 "-z", os.getenv("TILE_ZOOM_MAX", "10"),
             ]
