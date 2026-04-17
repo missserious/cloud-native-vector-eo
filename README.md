@@ -2,46 +2,54 @@
 
 There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
-- [Architecture Overview](#architecture-overview)
-- [Data Flow](#data-flow)
-- [Data Products](#data-products)
-- [Local Development / Setup](#local-development--setup)
-- [API Overview](#api-overview)
-- [Testing](#testing)
-- [Run Pytests](#run-pytests)
-- [Setup Verification](#setup-verification)
-- [Troubleshooting](#troubleshooting)
-- [Project Structure](#project-structure)
-
+- [Cloud-Native Architecture for Vector EO Products](#cloud-native-architecture-for-vector-eo-products)
+  - [Architecture Overview](#architecture-overview)
+  - [Data Flow](#data-flow)
+  - [Data Products](#data-products)
+  - [Local Development / Setup](#local-development--setup)
+  - [API Overview](#api-overview)
+  - [Testing](#testing)
+    - [Run Pytests](#run-pytests)
+  - [Setup Verification](#setup-verification)
+    - [Test minIO](#test-minio)
+    - [Test processing webserver](#test-processing-webserver)
+    - [Test frontend](#test-frontend)
+  - [Troubleshooting](#troubleshooting)
+  - [Project Structure](#project-structure)
+  - [TODO'S / Roadmap](#todos--roadmap)
+    - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
+    - [Nice to have](#nice-to-have)
 
 ## Architecture Overview
 
 This solution is implemented using **three Docker containers**:
-> ℹ️ Note: This is a note! ⚠️ 
 
+> ℹ️ Note: This is a note! ⚠️
 
 ```md
 > API + PROCESSING Container
-	Step 1: Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
+
+    Step 1: Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
     Step 2: After processing, the resulting artifacts are uploaded to **MinIO STORAGE**.
     Step 3: API Endpoint.
 ```
 
 ```md
 > MinIO STORAGE Container
+
     Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
     Provides two types of geospatial data access:
-		1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
-		2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
+    	1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
+    	2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
     GeoParquet files are not consumed directly by the frontend.
     They are accessed via query endpoints in the Processing API using DuckDB.
 ```
+
 ```md
 > FRONTEND Container
-	Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
+
+    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
 ```
-
-
 
 ```
                         ┌───────────────────────┐
@@ -75,14 +83,9 @@ This solution is implemented using **three Docker containers**:
 
 ```
 
-
 ## Data Flow
 
-
-
 ## Data Products
-
-
 
 ## Local Development / Setup
 
@@ -150,6 +153,7 @@ sudo docker build -f Dockerfile.dev -t frontend-mvp-dev .
 sudo docker run --rm \
   --network app-network \
   --env-file ../.env \
+  -e CHOKIDAR_USEPOLLING=true \
   -p 5173:5173 \
   -v $(pwd):/app \
   -v /app/node_modules \
@@ -253,7 +257,7 @@ Access frontend via Browser:
     - [x] Vite (Build Tool)
     - [x] React
     - [x] TypeScript
-    - [x] Prod and Test 
+    - [x] Prod and Test
 
   - [ ] Mapping / Visualization
     - [ ] React Map GL
