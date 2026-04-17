@@ -2,23 +2,18 @@
 
 There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
 
-- [Cloud-Native Architecture for Vector EO Products](#cloud-native-architecture-for-vector-eo-products)
-  - [Architecture Overview](#architecture-overview)
-  - [Data Flow](#data-flow)
-  - [Data Products](#data-products)
-  - [Local Development / Setup](#local-development--setup)
-  - [API Overview](#api-overview)
-  - [Testing](#testing)
-    - [Run Pytests](#run-pytests)
-  - [Setup Verification](#setup-verification)
-    - [Test minIO](#test-minio)
-    - [Test processing webserver](#test-processing-webserver)
-    - [Test frontend](#test-frontend)
-  - [Troubleshooting](#troubleshooting)
-  - [Project Structure](#project-structure)
-  - [TODO'S / Roadmap](#todos--roadmap)
-    - [Optional / Architecture Features \& Future Improvements](#optional--architecture-features--future-improvements)
-    - [Nice to have](#nice-to-have)
+- [Data Flow](#data-flow)
+- [Data Products](#data-products)
+- [Local Development / Setup](#local-development--setup)
+- [API Overview](#api-overview)
+- [Testing](#testing)
+- [Run Pytests](#run-pytests)
+- [Setup Verification](#setup-verification)
+- [Test minIO](#test-minio)
+- [Test processing webserver](#test-processing-webserver)
+- [Test frontend](#test-frontend)
+- [Troubleshooting](#troubleshooting)
+- [Project Structure](#project-structure)
 
 ## Architecture Overview
 
@@ -163,7 +158,7 @@ sudo docker run --rm \
 **Step 8: PROD: Build Frontend Image**
 
 ```bash
-sudo docker build -t frontend-mvp .
+sudo docker build -t frontend-mvp-prod .
 ```
 
 **Step 9: PROD: Run Frontend Container**
@@ -173,7 +168,7 @@ sudo docker run --rm \
   --network app-network \
   --env-file ../.env \
   -p 8080:80 \
-  frontend-mvp
+  frontend-mvp-prod
 ```
 
 ## API Overview
@@ -240,6 +235,7 @@ Access frontend via Browser:
     - [ ] Endpoint for features
   - [ ] Input contract: All input GeoJSON files are expected to be: In WGS84 (EPSG:4326)
     - [ ] Add input format support via loader layer (GeoJSON, FlatGeobuf (.fgb), GeoPackage (.gpkg))
+  - [ ] Dataset KEY: for tiles - geoparquet communication
 
   - [ ] Tests: pytest
     - [x] Basic setup
@@ -257,15 +253,17 @@ Access frontend via Browser:
     - [x] Vite (Build Tool)
     - [x] React
     - [x] TypeScript
-    - [x] Prod and Test
+    - [x] Prod and Dev
+    - [x] npm install local!!!
 
   - [ ] Mapping / Visualization
-    - [ ] React Map GL
-    - [ ] MapLibre GL JS
+    - [ ] React Map GL (React Wrapper Library) - NOT FOR NOW
+    - [x] PMTiles Protocol Plugin
+    - [x] MapLibre GL(Map-Engine) + Typen + CSS +
     - [ ] Display STAC Item Example with Classification + Render
 
-  - [ ] Styling
-    - [ ] Tailwind CSS
+  - [x] Styling
+    - [x] Tailwind CSS
 
   - [ ] Code Quality
     - [ ] ESLint
