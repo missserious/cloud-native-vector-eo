@@ -30,7 +30,6 @@ class MinioStorage:
             use_ssl=use_ssl,
         )
 
-    # TODO: checks if bucket exits, does not create
     def create_bucket(self) -> None:
         try:
             response = self.s3.list_buckets()
@@ -45,14 +44,28 @@ class MinioStorage:
         except Exception as e:
             logging.info(f"Error while checking bucket '{self.bucket_name}': {e}")
 
-    def upload_all_files(self, result: dict[str, str]) -> None:
-        for key, file_path in result.items():
+    def upload_all_assets(self, assets: dict[str, str]) -> None:
+        for key, file_path in assets.items():
 
-            object_name = f"{key}/{os.path.basename(file_path)}"
+            object_name = os.path.basename(file_path)
 
             self.s3.upload_file(
-                Filename=file_path, Bucket=self.bucket_name, Key=object_name
+                Filename=file_path,
+                Bucket=self.bucket_name,
+                Key=object_name
             )
+
             logging.info(f"Uploaded: {object_name}")
+
+    def upload_stac_file(self, file_path: str) -> None:
+        object_name = os.path.basename(file_path)
+
+        self.s3.upload_file(
+            Filename=file_path,
+            Bucket=self.bucket_name,
+            Key=object_name
+        )
+
+        logging.info(f"Uploaded STAC: {object_name}")
 
     # TODO: get_signed_url

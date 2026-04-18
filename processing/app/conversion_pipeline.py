@@ -2,6 +2,9 @@
 import os
 import logging
 
+import uuid
+import json
+
 # GDAL configuration (must be set before importing geopandas)
 os.environ["OGR_GEOJSON_MAX_OBJ_SIZE"] = os.getenv(
     "OGR_GEOJSON_MAX_OBJ_SIZE",
@@ -21,18 +24,37 @@ class ConversionPipeline:
 
     # TODO: Structured Return Type/Structured Data Return (via dict)
     def run(self, input_file_path: str) -> dict[str, str]:
+        # INCLUDE METHOD: to add id in geojson dataset
+        geojson_with_ids = self.add_feature_ids_to_geojson(input_file_path, "data/cache_input_file_uuid.geojson")
         # call _load_and_validate, geojson_to_parquet_geopandas, geojson_to_parquet_ogr2ogr, geojson_to_pmtiles
-        gdf = self._load_and_validate(input_file_path)
+        gdf = self._load_and_validate(geojson_with_ids)
 
         parquet_gpd = self.geojson_to_parquet_geopandas(gdf)
-        parquet_ogr = self.geojson_to_parquet_ogr2ogr(input_file_path)
-        pmtiles = self.geojson_to_pmtiles(input_file_path)
+        parquet_ogr = self.geojson_to_parquet_ogr2ogr(geojson_with_ids)
+        pmtiles = self.geojson_to_pmtiles(geojson_with_ids)
 
         return {
             "parquet_gpd": parquet_gpd,
             "parquet_ogr": parquet_ogr,
             "pmtiles": pmtiles,
         }
+
+
+    # -------------------------
+    # Include uuid in geojson
+    # -------------------------
+    def add_feature_ids_to_geojson(self, input_file_path: str, cache_path: str) -> str:
+
+        with open(input_file_path) as f:
+            data = json.load(f)
+
+        for ftr in data["features"]:
+            ftr["properties"]["uuid"] = str(uuid.uuid4())
+        with open(cache_path, "w") as f:
+            json.dump(data, f)
+
+        return cache_path
+
 
     # ---------------------
     # Load & Validate: Exceptions only Pipeline

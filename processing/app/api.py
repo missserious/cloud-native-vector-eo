@@ -5,6 +5,7 @@ from fastapi import FastAPI
 
 from conversion_pipeline import ConversionPipeline
 from minio_storage import MinioStorage
+from stac_generator import generate_stac_item
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,6 +15,7 @@ storage: MinioStorage = MinioStorage()
 output_dir = os.getenv("OUTPUT_DIR", "data/output")
 pipeline: ConversionPipeline = ConversionPipeline(output_dir)
 
+# TODO: RESULT naming
 RESULT: dict[str, str] | None = None
 
 # DuckDB Connection global - con = duckdb.connect()
@@ -30,15 +32,18 @@ def startup():
         "ndvi-change-vector-result-example.json"
     )
 
-    # Run pipeline (returns result=output file paths)
     # TODO: TypeDict
-    result: dict[str, str] = pipeline.run(input_file_path)
+    data_assets: dict[str, str] = pipeline.run(input_file_path)
 
-    storage.upload_all_files(result)
+    storage.upload_all_assets(data_assets)
+    stac_file = generate_stac_item(data_assets)
+    storage.upload_stac_file(stac_file)
 
-    RESULT = result
     logging.info("API IS RUNNING")
+    # logging.info(data_assets)
+    # logging.info(stac_file)
     # logging.info(RESULT)
+    RESULT = data_assets
 
 
 # TODO: signed URLs
