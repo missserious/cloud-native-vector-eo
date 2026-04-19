@@ -35,7 +35,8 @@ export default function Map() {
       console.log("SIGNED URL:", tilesUrl);
 
       const map = new maplibregl.Map({
-        container: mapContainer.current,
+        // quick fix:
+        container: mapContainer.current as HTMLElement,
 
         style: {
           version: 8,
