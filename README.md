@@ -1,50 +1,45 @@
 # [Cloud-Native Architecture for Vector EO Products](#)
 
-There is a growing demand for services that process **vector data**. This repository proposes a **cloud-native architecture** to support such services.
-
-- [Data Flow](#data-flow)
-- [Data Products](#data-products)
-- [Local Development / Setup](#local-development--setup)
-- [API Overview](#api-overview)
-- [Testing](#testing)
-- [Run Pytests](#run-pytests)
-- [Setup Verification](#setup-verification)
-- [Test minIO](#test-minio)
-- [Test processing webserver](#test-processing-webserver)
-- [Test frontend](#test-frontend)
-- [Troubleshooting](#troubleshooting)
-- [Project Structure](#project-structure)
+As the demand for **vector data processing** continues to grow, this repository introduces a **cloud-native architecture** to support such services.
 
 ## Architecture Overview
 
-This solution is implemented using **three Docker containers**:
+> #
+>
+> ### API + Processing Container
+>
+> - Handles transformation of vector data
+> - Reads GeoJSON input files
+> - Validates and processes geospatial data
+> - Generates output formats:
+>   - GeoParquet
+>   - MBTiles
+>   - PMTiles
+> - Uploads results to **MinIO Storage**
+> - Exposes API endpoints for processing and data access
+>
+> #
 
-> ℹ️ Note: This is a note! ⚠️
+> #
+>
+> ### MinIO STORAGE Container
+>
+> - Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
+> - Provides two types of geospatial data access:
+>   - 1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
+>   - 2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
+> - GeoParquet files are not consumed directly by the frontend.
+> - They are accessed via query endpoints in the Processing API using DuckDB.
+>
+> #
 
-```md
-> API + PROCESSING Container
-
-    Step 1: Handles transformation of vector data. It reads GeoJSON input files, validates and processes geospatial data, and generates output files such as GeoParquet, MBTiles, and PMTiles.
-    Step 2: After processing, the resulting artifacts are uploaded to **MinIO STORAGE**.
-    Step 3: API Endpoint.
-```
-
-```md
-> MinIO STORAGE Container
-
-    Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
-    Provides two types of geospatial data access:
-    	1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
-    	2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
-    GeoParquet files are not consumed directly by the frontend.
-    They are accessed via query endpoints in the Processing API using DuckDB.
-```
-
-```md
-> FRONTEND Container
-
-    Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
-```
+> #
+>
+> ### FRONTEND Container
+>
+> - Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
+>
+> #
 
 ```
                         ┌───────────────────────┐
@@ -82,9 +77,24 @@ This solution is implemented using **three Docker containers**:
 
 ## Data Products
 
-## Local Development / Setup
+## Local Development / Setup - Docker Compose
 
-To get the architecture running locally, follow these **7 main steps**:
+## Prerequisites
+
+- Docker
+- Docker Compose
+- Git
+- Git LFS
+
+## Environment Setup Requirements
+
+### Host configuration
+
+⚠️ You must add the following entry to your `/etc/hosts` file: 127.0.0.1 minio
+
+ℹ️ This is required to allow the services to resolve the MinIO endpoint locally.
+
+## Local Development / Setup
 
 **Step 1: Create Docker Network**
 This allows containers to communicate with each other.
@@ -236,6 +246,7 @@ Access frontend via Browser:
   - [ ] Input contract: All input GeoJSON files are expected to be: In WGS84 (EPSG:4326)
     - [ ] Add input format support via loader layer (GeoJSON, FlatGeobuf (.fgb), GeoPackage (.gpkg))
   - [ ] Dataset KEY: for tiles - geoparquet communication
+    - [ ] orjson instead of json
 
   - [ ] Tests: pytest
     - [x] Basic setup
