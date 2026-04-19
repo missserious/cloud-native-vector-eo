@@ -1,0 +1,64 @@
+services:
+  # Object Storage (MinIO)
+  minio:
+    build:
+      context: ./storage
+    image: minio-storage-mvp
+    env_file:
+      - .env
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./storage/minio_data:/data
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 2s
+      retries: 10
+
+  # Backend Processing Pipeline / API (FastAPI + DuckDB)
+  # Backend  Pipeline / API (depends on MinIO being fully ready)
+  backend:
+    build:
+      context: ./processing
+    image: processing-mvp
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./processing/app:/app
+      - ./processing/data:/app/data
+    # Wait until MinIO is healthy (object storage must be ready)
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  # DEV: Frontend (Vite React App)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    image: frontend-mvp-dev
+    env_file:
+      - .env
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
+
+  # # PROD: Frontend (Vite React App)
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile.prod
+  #   image: frontend-mvp-prod
+  #   ports:
+  #     - "80:80"
