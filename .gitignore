@@ -12,10 +12,17 @@ app/output
 minio_data/
 
 # ---------------------------------------
-# Test Data
+# Test and Cache Data
 # ---------------------------------------
 processing/data/input/ndvi-change-vector-result-example_empty.txt
 processing/data/input/ndvi-change-vector-result-example_invalid.json
+processing/data/input/berlin_correct.geojson
+processing/data/input/berlin_wrong.geojson
+processing/data/input/braila_correct.geojson
+processing/data/input/braila_wrong.geojson
+processing/data/input/countries_naturalEarth.geojson
+processing/data/output/
+processing/data/cache_input_file_uuid.geojson
 
 # ---------------------------------------
 # Python Bytecode Cache
