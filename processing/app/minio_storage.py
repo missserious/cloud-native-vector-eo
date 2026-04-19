@@ -68,4 +68,21 @@ class MinioStorage:
 
         logging.info(f"Uploaded STAC: {object_name}")
 
-    # TODO: get_signed_url
+
+
+    # ---------------------
+    # SIGN Tiles URL
+    # ---------------------
+    def get_signed_url(self, object_name: str, expires: int = 3600) -> str:
+        url = self.s3.generate_presigned_url(
+            ClientMethod="get_object",
+            Params={
+                "Bucket": self.bucket_name,
+                "Key": object_name
+            },
+            ExpiresIn=expires
+        )
+
+        logging.info(f"SIGNED URL: {url}")
+
+        return url

@@ -1,5 +1,6 @@
 import logging
 import os
+import json
 
 from fastapi import FastAPI
 
@@ -11,19 +12,28 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
+# CORS issue solved
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],  # frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 storage: MinioStorage = MinioStorage()
 output_dir = os.getenv("OUTPUT_DIR", "data/output")
 pipeline: ConversionPipeline = ConversionPipeline(output_dir)
 
-# TODO: RESULT naming
-RESULT: dict[str, str] | None = None
 
 # DuckDB Connection global - con = duckdb.connect()
 
 
 @app.on_event("startup")
 def startup():
-    global RESULT
 
     storage.create_bucket()
 
@@ -42,25 +52,34 @@ def startup():
     logging.info("API IS RUNNING")
     # logging.info(data_assets)
     # logging.info(stac_file)
-    # logging.info(RESULT)
-    RESULT = data_assets
 
 
-# TODO: signed URLs
-@app.get("/results")
-def get_results() -> dict[str, str]:
-    return RESULT
+# -------------------------------------------
+# STAC Endpoint: http://localhost:8000/stac
+# -------------------------------------------
+@app.get("/stac")
+def get_stac():
+    path = os.path.join(output_dir, "stac_item.json")
+
+    with open(path, "r") as f:
+        stac = json.load(f)
+
+    pmtiles_key = os.path.basename(
+        stac["assets"]["vector-tiles"]["href"]
+    )
+
+    # Browser points to FastAPI, NOT MinIO
+    stac["assets"]["vector-tiles"]["href"] = (
+        f"http://localhost:8000/tiles/{pmtiles_key}"
+    )
+
+    return stac
 
 
-# New Endpoint - GeoParquet Query → JSON
-# @app.get("/features")
-# def get_features():
-#     parquet_path = RESULT["parquet"]
-
-#     result = con.execute(f"""
-#         SELECT *
-#         FROM 's3://{storage.bucket_name}/{parquet_path}'
-#         LIMIT 100
-#     """).fetchdf()
-
-#     return result.to_dict(orient="records")
+# ---------------------
+# TILE PROXY ENDPOINT
+# ---------------------
+@app.get("/tiles/{key:path}")
+def get_tiles(key: str):
+    signed_url = storage.get_signed_url(key)
+    return RedirectResponse(url=signed_url)
