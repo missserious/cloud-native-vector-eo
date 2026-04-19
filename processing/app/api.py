@@ -28,9 +28,7 @@ storage: MinioStorage = MinioStorage()
 output_dir = os.getenv("OUTPUT_DIR", "data/output")
 pipeline: ConversionPipeline = ConversionPipeline(output_dir)
 
-
-# DuckDB Connection global - con = duckdb.connect()
-
+import duckdb
 
 @app.on_event("startup")
 def startup():
@@ -83,3 +81,44 @@ def get_stac():
 def get_tiles(key: str):
     signed_url = storage.get_signed_url(key)
     return RedirectResponse(url=signed_url)
+
+
+# --------------------------
+# STATISTIC EXAMPLE ENPOINT
+# --------------------------
+@app.get("/stats")
+def stats():
+
+    # TODO: load_stac()
+    path = os.path.join(
+        os.getenv("OUTPUT_DIR", "data/output"),
+        "stac_item.json"
+    )
+
+    with open(path, "r") as f:
+        stac = json.load(f)
+
+    # GeoParquet from STAC
+    parquet_key = os.path.basename(
+        stac["assets"]["vector-data"]["href"]
+    )
+
+    # IMPORTANG: use signed URL instead of raw MinIO URL
+    parquet_url = storage.get_signed_url(parquet_key)
+
+    con = duckdb.connect()
+
+    result = con.execute("""
+        SELECT
+            COUNT(*) AS feature_count,
+            SUM(population) AS total_population,
+            AVG(Intensity) AS avg_intensity
+        FROM read_parquet(?)
+    """, [parquet_url]).fetchone()
+
+    return {
+        "feature_count": result[0],
+        "total_population": result[1],
+        "avg_intensity": result[2],
+    }
+

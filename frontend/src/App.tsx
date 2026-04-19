@@ -1,4 +1,5 @@
 import Map from "./components/Map";
+import RightPanel from "./components/RightPanel";
 
 export default function App() {
   return (
@@ -9,7 +10,9 @@ export default function App() {
       </div>
       {/* RIGHT PANEL */}
       <div className="w-1/3 bg-gray-800 border-l border-gray-700">
-        <div className="text-white p-4">Right Panel</div>
+        <div className="text-white p-4">
+          <RightPanel />
+        </div>
       </div>
     </div>
   );
