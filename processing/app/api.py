@@ -18,7 +18,10 @@ from fastapi.responses import RedirectResponse
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # frontend origin
+    allow_origins=[
+        "http://localhost:5173",  # DEV
+        "http://localhost",       # PROD
+    ], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
