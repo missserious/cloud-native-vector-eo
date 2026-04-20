@@ -1,310 +1,194 @@
-# [Cloud-Native Architecture for Vector EO Products](#)
+# Cloud-Native Architecture for Vector EO Products
 
 As the demand for **vector data processing** continues to grow, this repository introduces a **cloud-native architecture** to support such services.
 
+## Table of Contents
+
+- [Cloud-Native Architecture for Vector EO Products](#cloud-native-architecture-for-vector-eo-products)
+  - [Table of Contents](#table-of-contents)
+  - [Architecture Overview](#architecture-overview)
+  - [Service Documentation](#service-documentation)
+  - [Getting Started](#getting-started)
+    - [Prerequisites](#prerequisites)
+      - [Git LFS – Test Data Setup](#git-lfs--test-data-setup)
+    - [Environment Setup Requirements](#environment-setup-requirements)
+    - [Frontend Setup](#frontend-setup)
+    - [Run with Docker Compose](#run-with-docker-compose)
+  - [After startup:](#after-startup)
+  - [API Overview](#api-overview)
+  - [Testing](#testing)
+    - [Run Pytests](#run-pytests)
+
 ## Architecture Overview
 
-> #
->
-> ### API + Processing Container
->
-> - Handles transformation of vector data
-> - Reads GeoJSON input files
-> - Validates and processes geospatial data
-> - Generates output formats:
->   - GeoParquet
->   - MBTiles
->   - PMTiles
-> - Uploads results to **MinIO Storage**
-> - Exposes API endpoints for processing and data access
->
-> #
+```text
+FRONTEND: React Container
+-------------------------
+The frontend is a React-based MapLibre application for interactive visualization of geospatial vector EO products.
 
-> #
->
-> ### MinIO STORAGE Container
->
-> - Provides persistent object storage using **MinIO**. It stores processed vector data uploaded by the Processing container and serves it via an S3-compatible API.
-> - Provides two types of geospatial data access:
->   - 1.  Static tile-based visualization (PMTiles) for map rendering **in the frontend**.
->   - 2.  Analytical vector datasets (GeoParquet) stored in object storage, intended for query-based access via the FastAPI layer.
-> - GeoParquet files are not consumed directly by the frontend.
-> - They are accessed via query endpoints in the Processing API using DuckDB.
->
-> #
+It consumes STAC metadata and visualizes vector data through two main data paths:
 
-> #
->
-> ### FRONTEND Container
->
-> - Provides a user interface to visualize and interact with the vector data stored in the **Storage Container**.
->
-> #
+- Map visualization via PMTiles vector tiles (client-side read)
+- Statistical exploration via GeoParquet datasets (storage-read server-side)
+
+All data access is mediated by the backend. The frontend does not access object storage directly. Instead, the backend provides:
+- signed URLs for PMTiles access from object storage
+- API endpoints for querying GeoParquet datasets using DuckDB
+- STAC metadata is retrieved via a backend endpoint.
+```
+
+```text
+BACKEND: Processing Pipeline + API Container
+--------------------------------------------
+The backend is responsible for geospatial data processing pipeline execution, storage writing, and serving as the central API layer of the system.
+
+Processing Pipeline:
+- Reads GeoJSON input files in ⚠️ valid WGS84 format
+- Validates input data
+- Generates output formats:
+  - GeoParquet (via pandas and ogr2ogr)
+  - PMTiles (via MBTiles intermediate step)
+- Generates STAC metadata
+- Stores all generated artifacts and STAC metadata in MinIO storage (Storage Writer responsibility)
+
+API Layer:
+The backend exposes a FastAPI-based interface that provides:
+- signed URLs for PMTiles access from object storage
+- endpoints for querying GeoParquet datasets using DuckDB (reading directly from object storage)
+- endpoints for retrieving STAC metadata from object storage
+```
+
+```text
+MINIO: Object Storage Container
+-------------------------------
+Provides persistent S3-compatible object storage for all system data products.
+
+Data Products:
+- GeoParquet for analytical access (generated via pandas and ogr2ogr)
+- PMTiles for web-based visualization
+- STAC metadata for dataset description and discovery
+```
 
 ```
                         ┌───────────────────────┐
                         │       FRONTEND        │
-                        │ (Browser / React)     │
+                        │  (Browser / React)    │
                         └──────────┬────────────┘
                                    │
-               GET /results        │      Download
-             (request signed URLs) │      processed pmtiles
+               GET API             │      Signed URL access
+               requests            │      (client-side PMTiles rendering)
                                    │
             ┌──────────────────────┴─────────────────────────┐
             │                                                │
             │                                                │
             ▼                                                ▼
-┌────────────────────────┐                      ┌────────────────────────┐
-│   API + PROCESSING     │                      │        MINIO           │
-│   (FastAPI Container)  │                      │   Object Storage       │
-│                        │                      │                        │
-│  POST /process         │                      │ - parquet outputs      │
-│  → runs pipeline       │                      │ - pmtiles tiles        │
-│  → uploads to MinIO    │                      │                        │
-│                        │                      │                        │
-│  GET /results          │                      │                        │
-│  → generates signed    │                      │                        │
-│    URLs                │                      │                        │
-└──────────┬─────────────┘                      └──────────┬─────────────┘
+┌───────────┴──────────────┐                    ┌────────────┴────────────┐
+│       BACKEND            │                    │        MINIO            │
+│   PROCESSING + API       │                    │   Object Storage        │
+│                          │                    │                         │
+│  Processing              │                    │                         │
+│  on container startup    │                    │ - GeoParquet datasets   │
+│  → runs pipeline         │                    │ - PMTiles tilesets      │
+│  → uploads to MinIO      │                    │ - STAC metadata         │
+│                          │                    │                         │
+│  API                     │                    │                         │
+│  GET /tiles/{key}        │                    │                         │
+│  → generates signed URLs │                    │                         │
+│  → redirects to MinIO    │                    │                         │
+│    via signed URL        │                    │                         │
+│  GET /stac               │                    │                         │
+│  → metadata              │                    │                         │
+│  GET /stats              │                    │                         │
+│  → uses geoparquet       │                    │                         │
+│                          │                    │                         │
+└──────────┬───────────────┘                    └──────────┬──────────────┘
            │                                               ▲
-           │ signed URLs                                   │
+           │ upload (write assets)                         │
            └───────────────────────────────────────────────┘
-                        direct parquet access
+                                                           │
+                          backend read access (GeoParquet via DuckDB)
 
 ```
 
-## Data Flow
+## Service Documentation
 
-## Data Products
+Each component contains its own detailed documentation:
 
-## Local Development / Setup - Docker Compose
+- [Frontend README](frontend/README.md)
+- [Backend README](processing/README.md)
+- [Storage (MinIO) README](storage/README.md)
 
-## Prerequisites
+## Getting Started
 
-- Docker
-- Docker Compose
-- Git
-- Git LFS
+This section explains how to run the system locally. The system is fully containerized using Docker Compose.
 
-## Environment Setup Requirements
+### Prerequisites
 
-### Host configuration
+- Git and Git LFS (required for test datasets)
+- Docker and Docker Compose
+- Node.js ⚠️ (>= 24 required, see [Frontend Setup](#frontend-setup))
 
-⚠️ You must add the following entry to your `/etc/hosts` file: 127.0.0.1 minio
+#### Git LFS – Test Data Setup
+
+This repository uses Git LFS to manage large test datasets.
+
+Test data is stored in: [processing/tests/data](processing/tests/data) \
+See dataset details: [Test Data README](processing/tests/data/README.md)
+
+⚠️ Make sure Git LFS is installed and the data is pulled successfully.\
+This is also required to run the pytest suite.
+
+---
+
+### Environment Setup Requirements
+
+Host configuration:
+
+⚠️ Add the following entry to your `/etc/hosts` file:
+
+127.0.0.1 minio
 
 ℹ️ This is required to allow the services to resolve the MinIO endpoint locally.
 
-## Local Development / Setup
+### Frontend Setup
 
-**Step 1: Create Docker Network**
-This allows containers to communicate with each other.
-
-```bash
-sudo docker network create app-network
-```
-
-**Step 2: Build Processing Image**
+⚠️ Install frontend dependencies via npm before building/running the frontend container:
 
 ```bash
-sudo docker build -t processing-mvp .
+cd frontend
+npm install
 ```
 
-**Step 3: Build Storage Image**
+### Run with Docker Compose
+
+Start the full system:
 
 ```bash
-sudo docker build -t minio-storage-mvp .
+docker compose up --build
 ```
 
-**Step 4: Run Storage Container**
+## After startup:
 
-```bash
-sudo docker run -d --name minio \
- --network app-network \
---env-file ../.env \
- -p 9000:9000 -p 9001:9001 \
- -v $(pwd)/minio_data:/data \
- minio-storage-mvp
-```
-
-**Troubleshooting**: MinIO is not reachable after system restart
-
-If the container already exists but is stopped (e.g., after shutting down your machine), you can restart it with:
-
-```bash
-sudo docker start minio
-```
-
-**Step 5: Run Processing Container**
-
-```bash
-sudo docker run --rm \
- --network app-network \
- --env-file ../.env \
- -v $(pwd)/app:/app \
- -v $(pwd)/data:/app/data \
- -p 8000:8000 \
- processing-mvp
-```
-
-**Step 6: DEV: Build Frontend Image**
-
-```bash
-sudo docker build -f Dockerfile.dev -t frontend-mvp-dev .
-```
-
-**Step 7: DEV: Run Frontend Container**
-
-```bash
-sudo docker run --rm \
-  --network app-network \
-  --env-file ../.env \
-  -e CHOKIDAR_USEPOLLING=true \
-  -p 5173:5173 \
-  -v $(pwd):/app \
-  -v /app/node_modules \
-  frontend-mvp-dev
-```
-
-**Step 8: PROD: Build Frontend Image**
-
-```bash
-sudo docker build -t frontend-mvp-prod .
-```
-
-**Step 9: PROD: Run Frontend Container**
-
-```bash
-sudo docker run --rm \
-  --network app-network \
-  --env-file ../.env \
-  -p 8080:80 \
-  frontend-mvp-prod
-```
+- MinIO object storage is initialized and accessible (via web interface at http://localhost:9001, use configured credentials in [.env](.env) file )
+- The backend automatically runs the processing pipeline on container startup
+- GeoParquet datasets, PMTiles tilesets, and STAC metadata are generated and stored in MinIO
+- The FastAPI backend is available at: http://localhost:8000
+- The frontend application is available at: http://localhost:8080
 
 ## API Overview
+
+The backend exposes a FastAPI-based interface:
+
+- `GET /stac` → returns STAC metadata
+- `GET /tiles/{key}` → returns signed URLs for PMTiles access
+- `GET /stats` → example endpoint for GeoParquet-based analytics queries
 
 ## Testing
 
 ### Run Pytests
 
+The backend includes a pytest-based test suite for validating the processing pipeline and storage integration.
+
 ```bash
 sudo docker run --rm processing-mvp pytest
 ```
-
-## Setup Verification
-
-### Test minIO
-
-Access MinIO Interface via Browser:
-`http://localhost:9001`
-enter credentials
-
-### Test processing webserver
-
-Access webserver via Browser:
-`http://localhost:8000/results`
-
-### Test frontend
-
-Access frontend via Browser:
-`http://localhost:8080`
-
-## Troubleshooting
-
-## Project Structure
-
-## TODO'S / Roadmap
-
-- Processing Container
-  - [x] Entry Point: API Layer - startup
-    - [ ] Orchestration: bucket, input_file_path, pipeline run(), signed urls, endpoint creation
-      - [x] Single File Pipeline: class ConversionPipeline
-      - [x] run: manages pipeline, validation and conversion
-      - [x] Convert MBTiles → PMTiles
-      - [x] Convert GeoJSON → GeoParquet (analytics dataset):
-        - [x] Solution A: geopandas (+ pandas, + pyarrow, +shapely)
-        - [x] Solution B: GDAL / ogr2ogr + ⚠️ parquet support
-    - [ ] Upload: class MinioStorage
-      - [x] Configure access to MinIO (endpoint, keys)
-      - [x] Create bucket for PMTiles in MinIO
-      - [x] Upload processed files (1 pmtiles and 2 parquets to MinIO (boto3))
-      - [ ] get_signed_url
-  - [ ] API Endpoint creation - Flow - Signed urls
-    - [ ] 1. container start
-    - [ ] 2. API (uvicorn) start
-    - [ ] 3. Post /process gets results
-    - [ ] 4. pipeline runs once
-    - [ ] 5. data upload to minIO
-    - [ ] API stays active
-    - [ ] GET /results always possible
-    - [ ] Test Endpoint with curl
-    - [x] Change batch container to service container
-    - [x] Webserver: uvicorn
-  - [ ] API Endpoint creation - Flow - geoparquet
-    - [ ] connection to minIO - duckdb
-    - [ ] Endpoint for features
-  - [ ] Input contract: All input GeoJSON files are expected to be: In WGS84 (EPSG:4326)
-    - [ ] Add input format support via loader layer (GeoJSON, FlatGeobuf (.fgb), GeoPackage (.gpkg))
-  - [ ] Dataset KEY: for tiles - geoparquet communication
-    - [ ] orjson instead of json
-
-  - [ ] Tests: pytest
-    - [x] Basic setup
-    - [x] Prepare and test testdata and upload per lfs
-    - [ ] Test case: Basic testing pipeline with testdata
-    - [ ] Test case: Basic testing connection to minIO
-  - [ ] Basic logging / error handling
-  - [ ] Linting / Prettier integration for Processing container > documentation
-
-- Storage Container (MinIO)
-  - [x] Setup MinIO container
-
-- Frontend Container
-  - [x] Setup
-    - [x] Vite (Build Tool)
-    - [x] React
-    - [x] TypeScript
-    - [x] Prod and Dev
-    - [x] npm install local!!!
-
-  - [ ] Mapping / Visualization
-    - [ ] React Map GL (React Wrapper Library) - NOT FOR NOW
-    - [x] PMTiles Protocol Plugin
-    - [x] MapLibre GL(Map-Engine) + Typen + CSS +
-    - [ ] Display STAC Item Example with Classification + Render
-
-  - [x] Styling
-    - [x] Tailwind CSS
-
-  - [ ] Code Quality
-    - [ ] ESLint
-    - [ ] Prettier
-    - [ ] Pre-commit hooks (husky & lint-staged)
-
-### Optional / Architecture Features & Future Improvements
-
-- [x] Docker Network
-  - Enables communication between containers.
-  - Without it, localhost in one container points only to itself, so containers cannot reach each other.
-  - By putting them in the same network, containers can communicate via their container names.
-
-- [ ] Docker Compose orchestration (Processing + Storage + Frontend)
-  - [ ] Processing Dockerfile: see TODOs
-- [ ] Development environment configurations (env files, debug setup)
-- [ ] Documentation (setup + workflow) - Table of overview
-  - [ ] Docker Diagram (e.g. Mermaid/PNG)
-
-### Nice to have
-
-- [ ] Processing: **multi-stage docker build** for clean/minimal image
-  - Stage 1: Build PMTiles CLI + any other temporary tools (e.g., curl, tar)
-  - Stage 2: Runtime stage with only Python3, Tippecanoe, PMTiles CLI + scripts
-  - Alternative for single-stage MVP: purge temporary tools (curl, tar) after installation
-- [ ] Processing: DEV-SERVER
-  - Hot Reload (Issue: watchdog)
-- [ ] Processing: in PROD: versioned upload
-- [ ] Processing: Exception handling (DEV vs PROD)
-  - DEV: full stacktrace for debugging
-  - PROD: clean error output for users
-  - Controlled via ENV variable DEBUG
-- [ ] Processing: FastAPI Lifespan Context instead of on_event
