@@ -9,15 +9,13 @@ As the demand for **vector data processing** continues to grow, this repository 
   - [Architecture Overview](#architecture-overview)
   - [Service Documentation](#service-documentation)
   - [Getting Started](#getting-started)
-    - [Prerequisites](#prerequisites)
-      - [Git LFS – Test Data Setup](#git-lfs--test-data-setup)
-    - [Environment Setup Requirements](#environment-setup-requirements)
-    - [Frontend Setup](#frontend-setup)
-    - [Run with Docker Compose](#run-with-docker-compose)
+    - [1. Prerequisites](#1-prerequisites)
+    - [2. Environment Setup Requirements](#2-environment-setup-requirements)
+    - [3. Frontend Setup](#3-frontend-setup)
+    - [4. Run with Docker Compose](#4-run-with-docker-compose)
   - [After startup:](#after-startup)
   - [API Overview](#api-overview)
   - [Testing](#testing)
-    - [Run Pytests](#run-pytests)
 
 ## Architecture Overview
 
@@ -66,7 +64,7 @@ Provides persistent S3-compatible object storage for all system data products.
 Data Products:
 - GeoParquet for analytical access (generated via pandas and ogr2ogr)
 - PMTiles for web-based visualization
-- STAC metadata for dataset description and discovery
+- STAC metadata for dataset description
 ```
 
 ```
@@ -122,15 +120,13 @@ Each component contains its own detailed documentation:
 
 This section explains how to run the system locally. The system is fully containerized using Docker Compose.
 
-### Prerequisites
+### 1. Prerequisites
 
 - Git and Git LFS (required for test datasets)
 - Docker and Docker Compose
 - Node.js ⚠️ (>= 24 required, see [Frontend Setup](#frontend-setup))
 
-#### Git LFS – Test Data Setup
-
-This repository uses Git LFS to manage large test datasets.
+**Git LFS – Test Data Setup**: This repository uses Git LFS to manage large test datasets.
 
 Test data is stored in: [processing/tests/data](processing/tests/data) \
 See dataset details: [Test Data README](processing/tests/data/README.md)
@@ -138,19 +134,15 @@ See dataset details: [Test Data README](processing/tests/data/README.md)
 ⚠️ Make sure Git LFS is installed and the data is pulled successfully.\
 This is also required to run the pytest suite.
 
----
-
-### Environment Setup Requirements
+### 2. Environment Setup Requirements
 
 Host configuration:
 
-⚠️ Add the following entry to your `/etc/hosts` file:
-
-127.0.0.1 minio
+⚠️ Add the following entry to your `/etc/hosts` file: → `127.0.0.1 minio`
 
 ℹ️ This is required to allow the services to resolve the MinIO endpoint locally.
 
-### Frontend Setup
+### 3. Frontend Setup
 
 ⚠️ Install frontend dependencies via npm before building/running the frontend container:
 
@@ -159,12 +151,22 @@ cd frontend
 npm install
 ```
 
-### Run with Docker Compose
+### 4. Run with Docker Compose
 
 Start the full system:
 
 ```bash
 docker compose up --build
+```
+
+Troubleshoot:
+
+```bash
+rm -rf node_modules package-lock.json
+npm install
+docker compose down -v
+docker compose build --no-cache
+docker compose up
 ```
 
 ## After startup:
@@ -173,22 +175,12 @@ docker compose up --build
 - The backend automatically runs the processing pipeline on container startup
 - GeoParquet datasets, PMTiles tilesets, and STAC metadata are generated and stored in MinIO
 - The FastAPI backend is available at: http://localhost:8000
-- The frontend application is available at: http://localhost:8080
+- The frontend application is available at: http://localhost:5173
 
 ## API Overview
 
-The backend exposes a FastAPI-based interface:
-
-- `GET /stac` → returns STAC metadata
-- `GET /tiles/{key}` → returns signed URLs for PMTiles access
-- `GET /stats` → example endpoint for GeoParquet-based analytics queries
+See the full API documentation in the [Backend API section](./processing/README.md#api)
 
 ## Testing
 
-### Run Pytests
-
-The backend includes a pytest-based test suite for validating the processing pipeline and storage integration.
-
-```bash
-sudo docker run --rm processing-mvp pytest
-```
+See the full Test Suite documentation in the [Backend Tests section](./processing/README.md#testing)

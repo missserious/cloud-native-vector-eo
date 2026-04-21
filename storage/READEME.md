@@ -1,6 +1,4 @@
-## FRONTEND: React
-
-This frontend is built with React, TypeScript, and Vite. It uses MapLibre GL JS for map rendering and visualization of geospatial data.
+# MINIO: Object Storage
 
 ## System Requirements
 
@@ -29,45 +27,38 @@ When running the system manually using `docker run` (without docker compose), co
 2. Backend (API + Processing)
 3. Frontend (UI)
 
-## Build & Run Frontend Container
+## Build & Run Storage Container
 
-### DEV Mode (Development Server)
-
-DEV: Build Frontend Image
+Build Storage Image
 
 ```bash
-docker build -f Dockerfile.dev -t frontend-mvp-dev .
+docker build -t minio-storage-mvp .
 ```
 
-DEV: Run Frontend Container
+Run Storage Container
 
 ```bash
-docker run --rm \
+docker run -d \
+  --name minio \
   --network app-network \
   --env-file ../.env \
-  -e CHOKIDAR_USEPOLLING=true \
-  -p 5173:5173 \
-  -v $(pwd):/app \
-  -v /app/node_modules \
-  frontend-mvp-dev
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -v $(pwd)/minio_data:/data \
+  minio-storage-mvp
 ```
 
-### PROD Mode (Production Server)
+ℹ️ The container must be started after the Docker network has been created.
 
-PROD: Build Frontend Image
+If the container already exists but is stopped (e.g. after restarting your machine), you can restart it with:
 
 ```bash
-docker build -f Dockerfile.prod -t frontend-mvp-prod .
+docker start minio
 ```
 
-PROD: Run Frontend Container
+## Storage Configuration (.env)
 
-```bash
-docker run --rm \
-  --network app-network \
-  --env-file ../.env \
-  -p 8080:80 \
-  frontend-mvp-prod
-```
+All configuration for the storage container is managed via environment variables defined in the [.env file](../.env). This includes:
 
-### Troubleshooting - npm dependencies
+- **Bucket name** used for all stored assets
+- Access **credentials**
