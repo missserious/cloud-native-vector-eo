@@ -3,3 +3,9 @@
 .maplibregl-ctrl {
   z-index: 9999 !important;
 }
+
+html,
+body,
+#root {
+  height: 100%;
+}

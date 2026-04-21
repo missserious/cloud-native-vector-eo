@@ -2,7 +2,13 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import { Protocol } from "pmtiles";
 
-export default function Map() {
+export default function Map({
+  stac,
+  onSelectFeature,
+}: {
+  stac: any;
+  onSelectFeature: (uuid: string) => void;
+}) {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
 
@@ -34,6 +40,7 @@ export default function Map() {
 
       console.log("SIGNED URL:", tilesUrl);
 
+      // Map creation
       const map = new maplibregl.Map({
         // quick fix:
         container: mapContainer.current as HTMLElement,
@@ -46,9 +53,7 @@ export default function Map() {
             osm: {
               type: "raster",
               tiles: [
-                "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}.png",
               ],
               tileSize: 256,
               attribution: "© OpenStreetMap",
@@ -78,22 +83,22 @@ export default function Map() {
               },
             },
 
-            // debug layer
+            // tiles  layer
             {
-              id: "debug",
+              id: "tiles",
               type: "fill",
               source: "pm",
-              "source-layer": "data", // data Layer
+              "source-layer": "data", // data Layer defined in backend
               paint: {
                 "fill-color": "#ff0000",
-                "fill-opacity": 0.4,
+                "fill-opacity": 0.2,
               },
             },
           ],
         },
 
-        //  Ljubljana
-        center: [14.5058, 46.0569],
+        //  Ljubljana (Fallback)
+        // center: [14.5058, 46.0569],
         zoom: 12,
       });
 
@@ -102,15 +107,39 @@ export default function Map() {
       // });
 
       // map.on("load", () => {
-      //   map.setFilter("debug", ["==", ["get", "class_2021"], "Forests"]);
+      //   map.setFilter("tiles", ["==", ["get", "class_2021"], "Forests"]);
       // });
 
-      map.on("click", "debug", (e) => {
-        console.log("FEATURES:", e.features);
+      // BBOX FIT (HIER IST DER FIX)
+      map.on("load", () => {
+        if (stac?.bbox) {
+          const [minLon, minLat, maxLon, maxLat] = stac.bbox;
+
+          map.fitBounds(
+            [
+              [minLon, minLat],
+              [maxLon, maxLat],
+            ],
+            {
+              padding: 140,
+              duration: 1000,
+            },
+          );
+        }
       });
 
+      map.on("click", "tiles", (e) => {
+        const uuid = e.features?.[0]?.properties?.uuid;
+
+        if (!uuid) return;
+
+        onSelectFeature(uuid);
+      });
+
+      // Controls
       map.addControl(new maplibregl.NavigationControl(), "top-right");
       map.addControl(new maplibregl.FullscreenControl(), "top-right");
+      map.addControl(new maplibregl.ScaleControl(), "bottom-left");
 
       mapRef.current = map;
     };

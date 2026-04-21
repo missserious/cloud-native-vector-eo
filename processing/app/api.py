@@ -38,9 +38,14 @@ def startup():
 
     storage.create_bucket()
 
+    # input_file_path: str = os.path.join(
+    #     os.getenv("INPUT_DIR", "data/input"),
+    #     "ndvi-change-vector-result-example.json"
+    # )
+
     input_file_path: str = os.path.join(
         os.getenv("INPUT_DIR", "data/input"),
-        "ndvi-change-vector-result-example.json"
+        "countries_naturalEarth.geojson"
     )
 
     # TODO: TypeDict
@@ -78,7 +83,7 @@ def get_stac():
 
 
 # ---------------------
-# TILE PROXY ENDPOINT
+# TILES PROXY ENDPOINT
 # ---------------------
 @app.get("/tiles/{key:path}")
 def get_tiles(key: str):
@@ -125,3 +130,53 @@ def stats():
         "avg_intensity": result[2],
     }
 
+# ----------------
+# FEATURE ENPOINT
+# ----------------
+@app.get("/features/{uuid}")
+def get_feature(uuid: str):
+
+    # load STAC
+    path = os.path.join(
+        os.getenv("OUTPUT_DIR", "data/output"),
+        "stac_item.json"
+    )
+
+    with open(path, "r") as f:
+        stac = json.load(f)
+
+    # get parquet 
+    parquet_key = os.path.basename(
+        stac["assets"]["vector-data"]["href"]
+    )
+
+    parquet_url = storage.get_signed_url(parquet_key)
+
+    con = duckdb.connect()
+
+    # get all columns
+    columns_info = con.execute("""
+        DESCRIBE SELECT * FROM read_parquet(?)
+    """, [parquet_url]).fetchall()
+
+    # filter out geometry
+    columns = [col[0] for col in columns_info if col[0] != "geometry"]
+
+    # dynamic query: quoten columns!!
+    safe_columns = [f'"{col}"' for col in columns]
+
+    query = f"""
+        SELECT {", ".join(safe_columns)}
+        FROM read_parquet(?)
+        WHERE uuid = ?
+        LIMIT 1
+    """
+    result = con.execute(query, [parquet_url, uuid]).fetchone()
+
+    if not result:
+        return {"error": "Feature not found"}
+
+    # change to cict
+    feature = dict(zip(columns, result))
+
+    return feature
