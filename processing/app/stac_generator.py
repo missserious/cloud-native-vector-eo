@@ -1,9 +1,10 @@
 import json
 import os
 import duckdb
+from typing import Dict
 
 
-def generate_stac_item(data_assets: dict[str, str]) -> str:
+def generate_stac_item(data_assets: Dict[str, str]) -> str:
     """
     Generates a minimal STAC Item from pipeline outputs using DuckDB.
     """
@@ -23,11 +24,16 @@ def generate_stac_item(data_assets: dict[str, str]) -> str:
     # ----------------------------
 
     # Feature count
-    feature_count = con.execute(f"""
+    result = con.execute(f"""
         SELECT COUNT(*) 
         FROM read_parquet('{parquet_path}')
-    """).fetchone()[0]
+    """).fetchone()
 
+    if result is None:
+        raise ValueError("No feature count returned")
+
+    feature_count = result[0]
+    
     # BBOX (expects geometry column)
     bounds = con.execute(f"""
         SELECT
@@ -38,12 +44,10 @@ def generate_stac_item(data_assets: dict[str, str]) -> str:
             FROM read_parquet('{parquet_path}')
     """).fetchone()
 
-    bbox = [
-        float(bounds[0]),
-        float(bounds[1]),
-        float(bounds[2]),
-        float(bounds[3])
-    ]
+    if bounds is None:
+        raise ValueError("No boundingbox returned")
+
+    bbox = [float(bounds[0]), float(bounds[1]), float(bounds[2]), float(bounds[3])]
 
     # Columns
     columns = con.execute(f"""
@@ -60,28 +64,27 @@ def generate_stac_item(data_assets: dict[str, str]) -> str:
     # TODO: add STAC classification extension when classes exist
     stac = {
         "type": "Feature",
-        "stac_version": "1.0.0",        # "id": "flood-severity-2026-03-08-aoi-001",
+        "stac_version": "1.0.0",  # "id": "flood-severity-2026-03-08-aoi-001",
         "id": "test-item",
         "bbox": bbox,
         "properties": {
             # "datetime": "...",
             # "title": "...",
             "columns": column_names,
-            "feature_count": feature_count
+            "feature_count": feature_count,
         },
-
         "assets": {
             "vector-data": {
                 "href": f"{base_url}/{os.path.basename(parquet_path)}",
                 "type": "application/vnd.apache.parquet",
-                "roles": ["data"]
+                "roles": ["data"],
             },
             "vector-tiles": {
                 "href": f"{base_url}/{os.path.basename(data_assets['pmtiles'])}",
                 "type": "application/vnd.pmtiles",
-                "roles": ["visual"]
-            }
-        }
+                "roles": ["visual"],
+            },
+        },
     }
 
     # ----------------------------

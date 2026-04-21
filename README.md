@@ -174,7 +174,7 @@ docker compose up
 - MinIO object storage is initialized and accessible (via web interface at http://localhost:9001, use configured credentials in [.env](.env) file )
 - The backend automatically runs the processing pipeline on container startup
 - GeoParquet datasets, PMTiles tilesets, and STAC metadata are generated and stored in MinIO
-- The FastAPI backend is available at: http://localhost:8000
+- The FastAPI backend is available at, e. g. stac metadata: http://localhost:8000/stac
 - The frontend application is available at: http://localhost:5173
 
 ## API Overview

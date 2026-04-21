@@ -53,9 +53,9 @@ docker run --rm \
 
 The backend exposes a FastAPI-based interface:
 
-- `GET /stac` → returns STAC metadata from MinIO storage
+- `GET /stac` → returns STAC metadata from MinIO storage: http://localhost:8000/stac
 - `GET /tiles/{key}` → returns signed URLs for PMTiles access
-- `GET /stats` → runs DuckDB analytics queries on GeoParquet data
+- `GET /stats` → runs DuckDB analytics queries on GeoParquet data:
 - `GET /features/{uuid}` → returns feature-level data from dataset
 
 ## Testing
@@ -66,4 +66,24 @@ The backend includes a pytest-based test suite for validating the processing pip
 
 ```bash
 docker run --rm processing-mvp pytest
+```
+
+## Code Quality Tools (Dev)
+
+The backend includes a set of development tools for code quality and consistency. These tools are intended for local development and CI checks, not for production runtime logic.
+
+The following tools are available inside the container:
+
+- **ruff** → fast linting and import/order checks
+- **black** → automatic code formatting
+- **mypy** → static type checking
+
+These tools help keep the codebase clean, consistent, and type-safe.
+
+### Example usage (inside container)
+
+```bash
+ruff check .
+black .
+mypy .
 ```

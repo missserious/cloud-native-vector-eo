@@ -4,24 +4,29 @@ import json
 
 from fastapi import FastAPI
 
+# CORS issue solved
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
+
+import duckdb
+
 from conversion_pipeline import ConversionPipeline
 from minio_storage import MinioStorage
 from stac_generator import generate_stac_item
+
+from typing import Dict, Any
 
 logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 
-# CORS issue solved
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",  # DEV
-        "http://localhost",       # PROD
-    ], 
+        "http://localhost",  # PROD
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -31,22 +36,21 @@ storage: MinioStorage = MinioStorage()
 output_dir = os.getenv("OUTPUT_DIR", "data/output")
 pipeline: ConversionPipeline = ConversionPipeline(output_dir)
 
-import duckdb
 
 @app.on_event("startup")
 def startup():
 
     storage.create_bucket()
 
-    # input_file_path: str = os.path.join(
-    #     os.getenv("INPUT_DIR", "data/input"),
-    #     "ndvi-change-vector-result-example.json"
-    # )
-
+    #########################################################################################
+    # NOTE: Test input file (hardcoded for MVP / local development)
+    # berlin_correct.geojson
+    # braila_correct.geojson
+    # countries_naturalEarth.geojson
     input_file_path: str = os.path.join(
-        os.getenv("INPUT_DIR", "data/input"),
-        "countries_naturalEarth.geojson"
+        os.getenv("INPUT_DIR", "data/input"), "ndvi-change-vector-result-example.json"
     )
+    #########################################################################################
 
     # TODO: TypeDict
     data_assets: dict[str, str] = pipeline.run(input_file_path)
@@ -60,31 +64,32 @@ def startup():
     # logging.info(stac_file)
 
 
+# TODO: Define Single Source of Truth for STAC metadata
+# Options: local filesystem (current) vs MinIO object storage
+# Affects: /stac, /stats, /features endpoints
+
 # -------------------------------------------
 # STAC Endpoint: http://localhost:8000/stac
 # -------------------------------------------
 @app.get("/stac")
-def get_stac():
-    path = os.path.join(output_dir, "stac_item.json")
+def stac() -> Dict[str, Any]:
 
-    with open(path, "r") as f:
-        stac = json.load(f)
+    # load STAC
+    stac = load_stac()
 
-    pmtiles_key = os.path.basename(
-        stac["assets"]["vector-tiles"]["href"]
-    )
+    pmtiles_key = os.path.basename(stac["assets"]["vector-tiles"]["href"])
 
-    # Browser points to FastAPI, NOT MinIO
-    stac["assets"]["vector-tiles"]["href"] = (
-        f"http://localhost:8000/tiles/{pmtiles_key}"
-    )
+    # URL Transformation: Browser points to FastAPI, NOT MinIO
+    stac["assets"]["vector-tiles"][
+        "href"
+    ] = f"http://localhost:8000/tiles/{pmtiles_key}"
 
     return stac
 
 
-# ---------------------
-# TILES PROXY ENDPOINT
-# ---------------------
+# -------------------------------------------
+# TILES Signed-URL-Redirect Gateway ENDPOINT
+# -------------------------------------------
 @app.get("/tiles/{key:path}")
 def get_tiles(key: str):
     signed_url = storage.get_signed_url(key)
@@ -97,38 +102,34 @@ def get_tiles(key: str):
 @app.get("/stats")
 def stats():
 
-    # TODO: load_stac()
-    path = os.path.join(
-        os.getenv("OUTPUT_DIR", "data/output"),
-        "stac_item.json"
-    )
-
-    with open(path, "r") as f:
-        stac = json.load(f)
+    # load STAC
+    stac = load_stac()
 
     # GeoParquet from STAC
-    parquet_key = os.path.basename(
-        stac["assets"]["vector-data"]["href"]
-    )
+    parquet_key = os.path.basename(stac["assets"]["vector-data"]["href"])
 
     # IMPORTANG: use signed URL instead of raw MinIO URL
     parquet_url = storage.get_signed_url(parquet_key)
 
     con = duckdb.connect()
 
-    result = con.execute("""
+    result = con.execute(
+        """
         SELECT
             COUNT(*) AS feature_count,
             SUM(population) AS total_population,
             AVG(Intensity) AS avg_intensity
         FROM read_parquet(?)
-    """, [parquet_url]).fetchone()
+    """,
+        [parquet_url],
+    ).fetchone()
 
     return {
         "feature_count": result[0],
         "total_population": result[1],
         "avg_intensity": result[2],
     }
+
 
 # ----------------
 # FEATURE ENPOINT
@@ -137,27 +138,22 @@ def stats():
 def get_feature(uuid: str):
 
     # load STAC
-    path = os.path.join(
-        os.getenv("OUTPUT_DIR", "data/output"),
-        "stac_item.json"
-    )
+    stac = load_stac()
 
-    with open(path, "r") as f:
-        stac = json.load(f)
-
-    # get parquet 
-    parquet_key = os.path.basename(
-        stac["assets"]["vector-data"]["href"]
-    )
+    # get parquet
+    parquet_key = os.path.basename(stac["assets"]["vector-data"]["href"])
 
     parquet_url = storage.get_signed_url(parquet_key)
 
     con = duckdb.connect()
 
     # get all columns
-    columns_info = con.execute("""
+    columns_info = con.execute(
+        """
         DESCRIBE SELECT * FROM read_parquet(?)
-    """, [parquet_url]).fetchall()
+    """,
+        [parquet_url],
+    ).fetchall()
 
     # filter out geometry
     columns = [col[0] for col in columns_info if col[0] != "geometry"]
@@ -176,7 +172,15 @@ def get_feature(uuid: str):
     if not result:
         return {"error": "Feature not found"}
 
-    # change to cict
+    # change to dictionary
     feature = dict(zip(columns, result))
 
     return feature
+
+
+# helper
+def load_stac() -> dict:
+    path = os.path.join(output_dir, "stac_item.json")
+
+    with open(path, "r") as f:
+        return json.load(f)

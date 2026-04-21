@@ -1,20 +1,19 @@
 # from typing import TypedDict
 import os
-import logging
+
+# import logging
 
 import uuid
 import json
 
 # GDAL configuration (must be set before importing geopandas)
-os.environ["OGR_GEOJSON_MAX_OBJ_SIZE"] = os.getenv(
-    "OGR_GEOJSON_MAX_OBJ_SIZE",
-    "0"
-)
+os.environ["OGR_GEOJSON_MAX_OBJ_SIZE"] = os.getenv("OGR_GEOJSON_MAX_OBJ_SIZE", "0")
 
 import subprocess
 
 import geopandas as gpd
 from shapely.validation import make_valid
+
 
 class ConversionPipeline:
 
@@ -25,7 +24,9 @@ class ConversionPipeline:
     # TODO: Structured Return Type/Structured Data Return (via dict)
     def run(self, input_file_path: str) -> dict[str, str]:
         # INCLUDE METHOD: to add id in geojson dataset
-        geojson_with_ids = self.add_feature_ids_to_geojson(input_file_path, "data/cache_input_file_uuid.geojson")
+        geojson_with_ids = self.add_feature_ids_to_geojson(
+            input_file_path, "data/cache_input_file_uuid.geojson"
+        )
         # call _load_and_validate, geojson_to_parquet_geopandas, geojson_to_parquet_ogr2ogr, geojson_to_pmtiles
         gdf = self._load_and_validate(geojson_with_ids)
 
@@ -38,7 +39,6 @@ class ConversionPipeline:
             "parquet_ogr": parquet_ogr,
             "pmtiles": pmtiles,
         }
-
 
     # -------------------------
     # Include uuid in geojson
@@ -54,7 +54,6 @@ class ConversionPipeline:
             json.dump(data, f)
 
         return cache_path
-
 
     # ---------------------
     # Load & Validate: Exceptions only Pipeline
@@ -136,12 +135,16 @@ class ConversionPipeline:
 
         cmd = [
             "ogr2ogr",
-            "-f", "Parquet",
+            "-f",
+            "Parquet",
             output_path,
             input_file_path,
-            "-lco", "GEOMETRY_NAME=geometry",
-            "-lco", "FID=id",
-            "-lco", f"COMPRESSION={compression}",
+            "-lco",
+            "GEOMETRY_NAME=geometry",
+            "-lco",
+            "FID=id",
+            "-lco",
+            f"COMPRESSION={compression}",
         ]
 
         result = subprocess.run(cmd, capture_output=True, text=True)
@@ -171,10 +174,14 @@ class ConversionPipeline:
         try:
             cmd = [
                 "tippecanoe",
-                "-o", output_mbtiles_path,
-                "-l", "data",  # LAYER NAME FOR FRONTEND
-                "-Z", os.getenv("TILE_ZOOM_MIN", "0"),
-                "-z", os.getenv("TILE_ZOOM_MAX", "10"),
+                "-o",
+                output_mbtiles_path,
+                "-l",
+                "data",  # LAYER NAME FOR FRONTEND
+                "-Z",
+                os.getenv("TILE_ZOOM_MIN", "0"),
+                "-z",
+                os.getenv("TILE_ZOOM_MAX", "10"),
             ]
             if os.getenv("TIPPECANOE_READ_PARALLEL", "true") == "true":
                 cmd.append("--read-parallel")

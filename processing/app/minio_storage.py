@@ -50,9 +50,7 @@ class MinioStorage:
             object_name = os.path.basename(file_path)
 
             self.s3.upload_file(
-                Filename=file_path,
-                Bucket=self.bucket_name,
-                Key=object_name
+                Filename=file_path, Bucket=self.bucket_name, Key=object_name
             )
 
             logging.info(f"Uploaded: {object_name}")
@@ -61,14 +59,10 @@ class MinioStorage:
         object_name = os.path.basename(file_path)
 
         self.s3.upload_file(
-            Filename=file_path,
-            Bucket=self.bucket_name,
-            Key=object_name
+            Filename=file_path, Bucket=self.bucket_name, Key=object_name
         )
 
         logging.info(f"Uploaded STAC: {object_name}")
-
-
 
     # ---------------------
     # SIGN Tiles URL
@@ -76,11 +70,8 @@ class MinioStorage:
     def get_signed_url(self, object_name: str, expires: int = 3600) -> str:
         url = self.s3.generate_presigned_url(
             ClientMethod="get_object",
-            Params={
-                "Bucket": self.bucket_name,
-                "Key": object_name
-            },
-            ExpiresIn=expires
+            Params={"Bucket": self.bucket_name, "Key": object_name},
+            ExpiresIn=expires,
         )
 
         logging.info(f"SIGNED URL: {url}")
