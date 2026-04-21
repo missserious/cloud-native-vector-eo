@@ -132,7 +132,7 @@ Test data is stored in: [processing/tests/data](processing/tests/data) \
 See dataset details: [Test Data README](processing/tests/data/README.md)
 
 ⚠️ Make sure Git LFS is installed and the data is pulled successfully.\
-This is also required to run the pytest suite.
+~~This is also required to run the pytest suite.~~
 
 ### 2. Environment Setup Requirements
 
@@ -153,20 +153,32 @@ npm install
 
 ### 4. Run with Docker Compose
 
-Start the full system:
+Start the full system the first time:
 
 ```bash
 docker compose up --build
 ```
 
-Troubleshoot:
+Troubleshooting:
 
 ```bash
-rm -rf node_modules package-lock.json
+rm -rf frontend/node_modules frontend/package-lock.json
+cd frontend
 npm install
+```
+
+```bash
 docker compose down -v
 docker compose build --no-cache
 docker compose up
+```
+
+Clean up the System:
+
+```bash
+rm -rf storage/minio_data
+rm -rf processing/data/output
+rm processing/data/cache_input_file_uuid.geojson
 ```
 
 ## After startup:
@@ -174,7 +186,7 @@ docker compose up
 - MinIO object storage is initialized and accessible (via web interface at http://localhost:9001, use configured credentials in [.env](.env) file )
 - The backend automatically runs the processing pipeline on container startup
 - GeoParquet datasets, PMTiles tilesets, and STAC metadata are generated and stored in MinIO
-- The FastAPI backend is available at, e. g. stac metadata: http://localhost:8000/stac
+- The FastAPI backend is available at, e. g. STAC metadata: http://localhost:8000/stac
 - The frontend application is available at: http://localhost:5173
 
 ## API Overview

@@ -18,6 +18,9 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
+# for running tests
+ENV PYTHONPATH=/app
+
 # Install python dependencies from requirements.txt
 COPY requirements.txt /app/
 RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
